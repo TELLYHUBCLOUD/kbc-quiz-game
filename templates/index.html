@@ -1,98 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBC Quiz Game - Kaun Banega Crorepati</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Start Screen -->
+        <div id="startScreen" class="screen active">
+            <div class="content">
+                <h1 class="title">🏆 KBC Quiz Game</h1>
+                <p class="subtitle">Kaun Banega Crorepati</p>
+                <div class="rules">
+                    <h2>Rules of the Game</h2>
+                    <ul>
+                        <li>✓ You will be asked 5 questions from general knowledge</li>
+                        <li>✓ Select your answer from the 4 options provided</li>
+                        <li>💰 Correct answer: Win ₹1000</li>
+                        <li>❌ Wrong answer: Lose ₹500</li>
+                    </ul>
+                </div>
+                <button class="btn" onclick="startGame()">▶ Start Game</button>
+            </div>
+        </div>
 
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-header">
+                <div class="stat-box">
+                    <p>Current Amount</p>
+                    <h3 id="money">₹0</h3>
+                </div>
+                <div class="stat-box">
+                    <p>✓ <span id="correct">0</span></p>
+                    <p>✗ <span id="incorrect">0</span></p>
+                </div>
+                <div class="stat-box">
+                    <p>Question</p>
+                    <h3><span id="currentQ">1</span>/<span id="totalQ">5</span></h3>
+                </div>
+            </div>
 
+            <div class="question-container">
+                <p id="question">Question will appear here</p>
+                <div id="options" class="options-container">
+                    <!-- Options will be dynamically loaded here -->
+                </div>
+            </div>
 
-    
-    
-    KBC Quiz Game - Kaun Banega Crorepati
-    
+            <div id="ladder" class="prize-ladder">
+                <h2>Prize Ladder</h2>
+                <!-- Ladder will be dynamically loaded here -->
+            </div>
+        </div>
 
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen">
+            <div class="content">
+                <h1 class="title">🏆 Game Over!</h1>
+                <div class="final-stats">
+                    <div class="stat-item">
+                        <span class="icon">💰</span>
+                        <p>Total Winnings</p>
+                        <h2 id="finalMoney">₹0</h2>
+                    </div>
+                    <div class="stat-item">
+                        <span class="icon">✓</span>
+                        <p>Correct Answers</p>
+                        <h2 id="finalCorrect">0</h2>
+                    </div>
+                    <div class="stat-item">
+                        <span class="icon">✗</span>
+                        <p>Wrong Answers</p>
+                        <h2 id="finalIncorrect">0</h2>
+                    </div>
+                </div>
 
-    
-        
-        
-            
-                🏆
-                KBC Quiz Game
-                Kaun Banega Crorepati
-                
-                
-                    Rules of the Game
-                    
-                        ✓ You will be asked 5 questions from general knowledge
-                        ✓ Select your answer from the 4 options provided
-                        💰 Correct answer: Win ₹1000
-                        ❌ Wrong answer: Lose ₹500
-                    
-                
-                
-                ▶ Start Game
-            
-        
+                <p id="finalMessage" class="final-message"></p>
+                <button class="btn" onclick="playAgain()">🏠 Play Again</button>
+            </div>
+        </div>
+    </div>
 
-        
-        
-            
-            
-                
-                    Current Amount
-                    ₹0
-                
-                
-                    ✓ 0
-                    ✗ 0
-                
-                
-                    Question
-                    1/5
-                
-            
-
-            
-            
-                Question will appear here
-                
-            
-
-            
-            
-                Prize Ladder
-                
-            
-        
-
-        
-        
-            
-                🏆
-                Game Over!
-                
-                
-                    
-                        💰
-                        Total Winnings
-                        ₹0
-                    
-                    
-                    
-                        ✓
-                        Correct Answers
-                        0
-                    
-                    
-                    
-                        ✗
-                        Wrong Answers
-                        0
-                    
-                
-
-                
-                
-                🏠 Play Again
-            
-        
-    
-
-    
-
-
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

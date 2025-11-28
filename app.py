@@ -2,6 +2,10 @@
 from flask import Flask, render_template, request, jsonify, session
 import os
 import secrets
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -84,7 +88,9 @@ def get_question():
 def submit_answer():
     """Check the submitted answer"""
     data = request.json
+    logging.info(f"Received data: {data}")
     selected_answer = data.get('answer')
+    logging.info(f"Selected answer: {selected_answer}")
     
     current = session.get('current_question', 0)
     
@@ -93,6 +99,8 @@ def submit_answer():
     
     question = QUESTIONS[current]
     is_correct = selected_answer == question['correct']
+    logging.info(f"Correct answer: {question['correct']}")
+    logging.info(f"Is correct: {is_correct}")
     
     # Update session data
     if is_correct:
@@ -125,4 +133,5 @@ def get_results():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    app.logger.info(f"Starting app on port {port}")
     app.run(host='0.0.0.0', port=port, debug=True)
