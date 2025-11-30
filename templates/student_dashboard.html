@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - O Level Exam</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .welcome {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: left;
+            margin: 30px 0;
+        }
+
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instructions li {
+            padding: 10px 0;
+            color: #555;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .instructions li:last-child {
+            border-bottom: none;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>👨‍🎓 Student Dashboard</h1>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="welcome">Welcome, {{ session.username }}!</div>
+            
+            <div class="instructions">
+                <h3>📋 Exam Instructions</h3>
+                <ul>
+                    <li>✓ Total Questions: 100 (25 from each category)</li>
+                    <li>✓ Categories: Python, Web Design, IoT, Computer Fundamentals</li>
+                    <li>✓ Each question has 4 options (A, B, C, D)</li>
+                    <li>✓ Select one answer for each question</li>
+                    <li>✓ You can review and change answers before submitting</li>
+                    <li>✓ No negative marking</li>
+                    <li>✓ Click "Submit Exam" button when finished</li>
+                    <li>⚠️ You can take the exam only once</li>
+                </ul>
+            </div>
+
+            <a href="/exam" class="btn-start">🚀 Start Exam</a>
+            <br><br>
+            <a href="/student/results" class="btn-start" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">📊 View Results</a>
+        </div>
+    </div>
+</body>
+</html>
