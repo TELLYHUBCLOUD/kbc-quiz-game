@@ -1,27 +1,42 @@
-# app.py - Main Flask Application with MongoDB
+# app.py - Main Flask Application with MongoDB (Vercel Compatible)
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from flask_pymongo import PyMongo
 from werkzeug.security import generate_password_hash, check_password_hash
-from bson.objectid import ObjectId
-import secrets
 from datetime import datetime
-import json
+import secrets
+import os
+
+# Import pymongo directly for Vercel compatibility
+from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
 
-# MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror"
-# For MongoDB Atlas (Cloud):
-# app.config["MONGO_URI"] = "mongodb+srv://username:password@cluster.mongodb.net/olevel_exam?retryWrites=true&w=majority"
+# MongoDB Configuration - MUST USE MONGODB ATLAS FOR VERCEL
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/olevel_exam')
 
-mongo = PyMongo(app)
+# Initialize MongoDB client
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    db = client.olevel_exam
+    
+    # Test connection
+    client.server_info()
+    print("MongoDB connected successfully!")
+except Exception as e:
+    print(f"MongoDB connection error: {e}")
+    db = None
 
 # Collections
-users = mongo.db.users
-questions = mongo.db.questions
-exams = mongo.db.exams
-results = mongo.db.results
+def get_collections():
+    if db is not None:
+        return {
+            'users': db.users,
+            'questions': db.questions,
+            'exams': db.exams,
+            'results': db.results
+        }
+    return None
 
 # Initialize Questions Database
 QUESTIONS_DATA = {
@@ -137,6 +152,14 @@ QUESTIONS_DATA = {
 
 def init_db():
     """Initialize database with questions and admin user"""
+    collections = get_collections()
+    if not collections:
+        print("Warning: MongoDB not connected. Database initialization skipped.")
+        return
+    
+    users = collections['users']
+    questions = collections['questions']
+    
     # Create admin user if not exists
     if users.find_one({"username": "admin"}) is None:
         users.insert_one({
@@ -145,6 +168,7 @@ def init_db():
             "role": "admin",
             "created_at": datetime.now()
         })
+        print("Admin user created")
     
     # Insert questions if not exists
     if questions.count_documents({}) == 0:
@@ -157,10 +181,10 @@ def init_db():
                     "answer": q["answer"],
                     "question_number": i + 1
                 })
+        print("Questions inserted")
 
-# Initialize database on first run
-with app.app_context():
-    init_db()
+# Initialize database
+init_db()
 
 # ============= ROUTES =============
 
@@ -170,9 +194,13 @@ def index():
 
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
+    collections = get_collections()
+    if not collections:
+        return jsonify({"success": False, "message": "Database not connected"}), 500
+    
     if request.method == 'POST':
         data = request.json
-        user = users.find_one({"username": data['username']})
+        user = collections['users'].find_one({"username": data['username']})
         
         if user and check_password_hash(user['password'], data['password']):
             if user['role'] == 'admin':
@@ -187,9 +215,13 @@ def admin_login():
 
 @app.route('/student_login', methods=['GET', 'POST'])
 def student_login():
+    collections = get_collections()
+    if not collections:
+        return jsonify({"success": False, "message": "Database not connected"}), 500
+    
     if request.method == 'POST':
         data = request.json
-        user = users.find_one({"username": data['username']})
+        user = collections['users'].find_one({"username": data['username']})
         
         if user and check_password_hash(user['password'], data['password']):
             if user['role'] == 'student':
@@ -204,14 +236,18 @@ def student_login():
 
 @app.route('/register', methods=['POST'])
 def register():
+    collections = get_collections()
+    if not collections:
+        return jsonify({"success": False, "message": "Database not connected"}), 500
+    
     data = request.json
     
     # Check if username exists
-    if users.find_one({"username": data['username']}):
+    if collections['users'].find_one({"username": data['username']}):
         return jsonify({"success": False, "message": "Username already exists"}), 400
     
     # Create new student
-    users.insert_one({
+    collections['users'].insert_one({
         "username": data['username'],
         "password": generate_password_hash(data['password']),
         "name": data['name'],
@@ -239,12 +275,16 @@ def student_dashboard():
 
 @app.route('/exam')
 def exam():
+    collections = get_collections()
     if 'user_id' not in session or session.get('role') != 'student':
         return redirect(url_for('student_login'))
     
+    if not collections:
+        return "Database not connected", 500
+    
     # Check if student already took exam
     user_id = ObjectId(session['user_id'])
-    existing_exam = exams.find_one({"student_id": user_id, "status": "completed"})
+    existing_exam = collections['exams'].find_one({"student_id": user_id, "status": "completed"})
     
     if existing_exam:
         return redirect(url_for('student_results'))
@@ -253,17 +293,18 @@ def exam():
 
 @app.route('/api/start_exam', methods=['POST'])
 def start_exam():
-    if 'user_id' not in session:
+    collections = get_collections()
+    if 'user_id' not in session or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Get random 25 questions from each category
+    # Get all questions from each category
     exam_questions = []
     for category in ['python', 'web_design', 'iot', 'fundamentals']:
-        cat_questions = list(questions.find({"category": category}))
+        cat_questions = list(collections['questions'].find({"category": category}))
         exam_questions.extend(cat_questions[:25])
     
     # Create exam session
-    exam_id = exams.insert_one({
+    exam_id = collections['exams'].insert_one({
         "student_id": ObjectId(session['user_id']),
         "status": "in_progress",
         "started_at": datetime.now(),
@@ -287,14 +328,15 @@ def start_exam():
 
 @app.route('/api/submit_exam', methods=['POST'])
 def submit_exam():
-    if 'user_id' not in session or 'exam_id' not in session:
+    collections = get_collections()
+    if 'user_id' not in session or 'exam_id' not in session or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
     data = request.json
     answers = data.get('answers', {})
     
     # Get exam
-    exam = exams.find_one({"_id": ObjectId(session['exam_id'])})
+    exam = collections['exams'].find_one({"_id": ObjectId(session['exam_id'])})
     
     # Calculate score
     correct_count = 0
@@ -302,7 +344,7 @@ def submit_exam():
     results_detail = []
     
     for q_id in exam['questions']:
-        question = questions.find_one({"_id": ObjectId(q_id)})
+        question = collections['questions'].find_one({"_id": ObjectId(q_id)})
         student_answer = answers.get(q_id, -1)
         
         is_correct = int(student_answer) == question['answer']
@@ -332,7 +374,7 @@ def submit_exam():
         grade = "F"
     
     # Update exam status
-    exams.update_one(
+    collections['exams'].update_one(
         {"_id": ObjectId(session['exam_id'])},
         {"$set": {
             "status": "completed",
@@ -342,7 +384,7 @@ def submit_exam():
     )
     
     # Save results
-    results.insert_one({
+    collections['results'].insert_one({
         "student_id": ObjectId(session['user_id']),
         "exam_id": ObjectId(session['exam_id']),
         "total_questions": total_questions,
@@ -371,16 +413,17 @@ def student_results():
 
 @app.route('/api/my_results')
 def get_my_results():
-    if 'user_id' not in session:
+    collections = get_collections()
+    if 'user_id' not in session or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
-    result = results.find_one({"student_id": ObjectId(session['user_id'])})
+    result = collections['results'].find_one({"student_id": ObjectId(session['user_id'])})
     
     if not result:
         return jsonify({"error": "No results found"}), 404
     
     # Get student info
-    user = users.find_one({"_id": ObjectId(session['user_id'])})
+    user = collections['users'].find_one({"_id": ObjectId(session['user_id'])})
     
     # Calculate category-wise performance
     category_stats = {
@@ -417,13 +460,14 @@ def admin_all_results():
 
 @app.route('/api/all_results')
 def get_all_results():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    collections = get_collections()
+    if 'user_id' not in session or session.get('role') != 'admin' or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
     all_results = []
     
-    for result in results.find():
-        student = users.find_one({"_id": result['student_id']})
+    for result in collections['results'].find():
+        student = collections['users'].find_one({"_id": result['student_id']})
         all_results.append({
             "student_name": student.get('name', student['username']),
             "roll_number": student.get('roll_number', 'N/A'),
@@ -441,5 +485,13 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
+# Health check for Vercel
+@app.route('/api/health')
+def health():
+    if db is not None:
+        return jsonify({"status": "healthy", "database": "connected"})
+    return jsonify({"status": "unhealthy", "database": "disconnected"}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
