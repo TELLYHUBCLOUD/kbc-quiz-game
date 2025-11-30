@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Results - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-box {
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 300px;
+            max-width: 100%;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .results-table thead {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .results-table th {
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .results-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .grade-a-plus {
+            background: #4caf50;
+            color: white;
+        }
+
+        .grade-a {
+            background: #8bc34a;
+            color: white;
+        }
+
+        .grade-b {
+            background: #03a9f4;
+            color: white;
+        }
+
+        .grade-c {
+            background: #ff9800;
+            color: white;
+        }
+
+        .grade-d {
+            background: #ff5722;
+            color: white;
+        }
+
+        .grade-f {
+            background: #f44336;
+            color: white;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .stat-box-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        @media (max-width: 968px) {
+            .results-table {
+                font-size: 14px;
+            }
+
+            .results-table th,
+            .results-table td {
+                padding: 10px;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+        }
+
+        @media print {
+            .navbar, .search-box, .export-btn, .back-btn { display: none; }
+            body { background: white; }
+            .card { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>📊 All Student Results</h1>
+        <a href="/admin/dashboard" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="stats-summary" id="statsSummary">
+                <div class="stat-box">
+                    <div class="stat-box-value" id="totalStudents">0</div>
+                    <div class="stat-box-label">Total Students</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-value" id="avgPercentage">0%</div>
+                    <div class="stat-box-label">Average Score</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-value" id="passCount">0</div>
+                    <div class="stat-box-label">Passed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-value" id="failCount">0</div>
+                    <div class="stat-box-label">Failed</div>
+                </div>
+            </div>
+
+            <div class="header">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by name or roll number..." onkeyup="filterResults()">
+                <button class="export-btn" onclick="exportResults()">📥 Export to CSV</button>
+            </div>
+
+            <div id="loading" class="loading">
+                <h3>Loading results...</h3>
+            </div>
+
+            <div id="resultsContainer" style="display: none;">
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student Name</th>
+                            <th>Roll Number</th>
+                            <th>Total Questions</th>
+                            <th>Correct</th>
+                            <th>Percentage</th>
+                            <th>Grade</th>
+                            <th>Exam Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Results will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="noResults" class="no-results" style="display: none;">
+                <h2>📋 No Results Found</h2>
+                <p>No students have taken the exam yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allResults = [];
+
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/all_results');
+                const data = await response.json();
+
+                allResults = data.results;
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (allResults.length === 0) {
+                    document.getElementById('noResults').style.display = 'block';
+                    return;
+                }
+
+                document.getElementById('resultsContainer').style.display = 'block';
+                displayResults(allResults);
+                updateStatsSummary(allResults);
+
+            } catch (error) {
+                console.error('Error loading results:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('noResults').style.display = 'block';
+            }
+        }
+
+        function displayResults(results) {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            results.forEach((result, index) => {
+                const row = document.createElement('tr');
+                
+                const gradeClass = `grade-${result.grade.toLowerCase().replace('+', '-plus')}`;
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><strong>${result.student_name}</strong></td>
+                    <td>${result.roll_number}</td>
+                    <td>${result.total_questions}</td>
+                    <td>${result.correct_answers}</td>
+                    <td><strong>${result.percentage.toFixed(2)}%</strong></td>
+                    <td><span class="grade-badge ${gradeClass}">${result.grade}</span></td>
+                    <td>${result.submitted_at}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStatsSummary(results) {
+            const total = results.length;
+            const avgPercentage = results.reduce((sum, r) => sum + r.percentage, 0) / total;
+            const passed = results.filter(r => r.percentage >= 50).length;
+            const failed = total - passed;
+
+            document.getElementById('totalStudents').textContent = total;
+            document.getElementById('avgPercentage').textContent = avgPercentage.toFixed(1) + '%';
+            document.getElementById('passCount').textContent = passed;
+            document.getElementById('failCount').textContent = failed;
+        }
+
+        function filterResults() {
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            
+            const filtered = allResults.filter(result => 
+                result.student_name.toLowerCase().includes(searchTerm) ||
+                result.roll_number.toLowerCase().includes(searchTerm)
+            );
+
+            displayResults(filtered);
+        }
+
+        function exportResults() {
+            let csv = 'Student Name,Roll Number,Total Questions,Correct Answers,Percentage,Grade,Exam Date\n';
+            
+            allResults.forEach(result => {
+                csv += `${result.student_name},${result.roll_number},${result.total_questions},${result.correct_answers},${result.percentage.toFixed(2)}%,${result.grade},${result.submitted_at}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `olevel_results_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Load results on page load
+        window.onload = loadResults;
+    </script>
+</body>
+</html>
