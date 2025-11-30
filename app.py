@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
 
 # MongoDB Configuration - MUST USE MONGODB ATLAS FOR VERCEL
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/olevel_exam')
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
 
 # Initialize MongoDB client
 try:
