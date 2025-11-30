@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Portal - O Level Exam</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .navbar h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .timer {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 10px;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            margin-top: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .exam-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .question-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .category-python {
+            background: #4caf50;
+            color: white;
+        }
+
+        .category-web_design {
+            background: #2196f3;
+            color: white;
+        }
+
+        .category-iot {
+            background: #ff9800;
+            color: white;
+        }
+
+        .category-fundamentals {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .question-number {
+            font-size: 18px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .question-text {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option {
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .option-label {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .option.selected .option-label {
+            background: #764ba2;
+        }
+
+        .option-text {
+            flex: 1;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-prev {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-prev:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-next:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .question-btn {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .question-btn:hover {
+            border-color: #667eea;
+        }
+
+        .question-btn.answered {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .question-btn.current {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .stats {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        @media (max-width: 968px) {
+            .exam-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+
+            .question-text {
+                font-size: 18px;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>📝 O Level Exam - In Progress</h1>
+        <div class="timer" id="timer">Time: --:--</div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        <div class="progress-text" id="progressText">Question 0 of 100</div>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="loading">
+            <h2>Loading Exam Questions...</h2>
+            <p>Please wait while we prepare your exam.</p>
+        </div>
+
+        <div id="examContent" class="exam-layout" style="display: none;">
+            <div class="question-panel">
+                <div class="question-header">
+                    <div>
+                        <span class="category-badge" id="categoryBadge">Category</span>
+                    </div>
+                    <div class="question-number" id="questionNumber">Question 1 of 100</div>
+                </div>
+
+                <div class="question-text" id="questionText">
+                    Question will appear here
+                </div>
+
+                <div class="options" id="optionsContainer">
+                    <!-- Options will be loaded here -->
+                </div>
+
+                <div class="navigation">
+                    <button class="btn btn-prev" id="prevBtn" onclick="previousQuestion()">← Previous</button>
+                    <button class="btn btn-next" id="nextBtn" onclick="nextQuestion()">Next →</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <h3>Question Navigator</h3>
+                <div class="question-grid" id="questionGrid">
+                    <!-- Question buttons will be loaded here -->
+                </div>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Answered</span>
+                        <span class="stat-value" id="answeredCount">0/100</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Remaining</span>
+                        <span class="stat-value" id="remainingCount">100</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-submit" onclick="confirmSubmit()" style="margin-top: 20px;">
+                    ✓ Submit Exam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div class="modal" id="submitModal">
+        <div class="modal-content">
+            <h2>⚠️ Submit Exam?</h2>
+            <p>Are you sure you want to submit your exam?</p>
+            <p><strong>Answered: <span id="modalAnswered">0</span> / 100</strong></p>
+            <p>You cannot change your answers after submission.</p>
+            <div class="modal-buttons">
+                <button class="btn btn-prev" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-submit" onclick="submitExam()">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let answers = {};
+        let startTime = Date.now();
+
+        // Load exam questions
+        async function loadExam() {
+            try {
+                const response = await fetch('/api/start_exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                questions = data.questions;
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('examContent').style.display = 'grid';
+
+                loadQuestionGrid();
+                displayQuestion(0);
+                startTimer();
+            } catch (error) {
+                console.error('Error loading exam:', error);
+                alert('Failed to load exam. Please try again.');
+            }
+        }
+
+        // Display current question
+        function displayQuestion(index) {
+            currentQuestionIndex = index;
+            const question = questions[index];
+
+            // Update category badge
+            const categoryBadge = document.getElementById('categoryBadge');
+            categoryBadge.textContent = question.category.replace('_', ' ').toUpperCase();
+            categoryBadge.className = 'category-badge category-' + question.category;
+
+            // Update question number
+            document.getElementById('questionNumber').textContent = `Question ${index + 1} of ${questions.length}`;
+
+            // Update question text
+            document.getElementById('questionText').textContent = question.question;
+
+            // Update options
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+
+            question.options.forEach((option, i) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option';
+                if (answers[question.id] === i) {
+                    optionDiv.classList.add('selected');
+                }
+                optionDiv.onclick = () => selectOption(question.id, i);
+
+                optionDiv.innerHTML = `
+                    <div class="option-label">${String.fromCharCode(65 + i)}</div>
+                    <div class="option-text">${option}</div>
+                `;
+
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').textContent = index === questions.length - 1 ? 'Finish' : 'Next →';
+
+            // Update progress
+            updateProgress();
+            updateQuestionGrid();
+        }
+
+        // Select option
+        function selectOption(questionId, optionIndex) {
+            answers[questionId] = optionIndex;
+            displayQuestion(currentQuestionIndex);
+            updateStats();
+        }
+
+        // Navigation functions
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                displayQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                displayQuestion(currentQuestionIndex + 1);
+            }
+        }
+
+        function jumpToQuestion(index) {
+            displayQuestion(index);
+        }
+
+        // Load question grid
+        function loadQuestionGrid() {
+            const grid = document.getElementById('questionGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < questions.length; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'question-btn';
+                btn.textContent = i + 1;
+                btn.onclick = () => jumpToQuestion(i);
+                grid.appendChild(btn);
+            }
+        }
+
+        // Update question grid
+        function updateQuestionGrid() {
+            const buttons = document.querySelectorAll('.question-btn');
+            buttons.forEach((btn, i) => {
+                btn.classList.remove('current', 'answered');
+                if (i === currentQuestionIndex) {
+                    btn.classList.add('current');
+                } else if (answers[questions[i].id] !== undefined) {
+                    btn.classList.add('answered');
+                }
+            });
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = 
+                `Question ${currentQuestionIndex + 1} of ${questions.length}`;
+        }
+
+        // Update statistics
+        function updateStats() {
+            const answeredCount = Object.keys(answers).length;
+            document.getElementById('answeredCount').textContent = `${answeredCount}/${questions.length}`;
+            document.getElementById('remainingCount').textContent = questions.length - answeredCount;
+        }
+
+        // Timer
+        function startTimer() {
+            setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const hours = Math.floor(elapsed / 3600);
+                const minutes = Math.floor((elapsed % 3600) / 60);
+                const seconds = elapsed % 60;
+
+                const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('timer').textContent = 'Time: ' + timeStr;
+            }, 1000);
+        }
+
+        // Confirm submit
+        function confirmSubmit() {
+            const answeredCount = Object.keys(answers).length;
+            document.getElementById('modalAnswered').textContent = answeredCount;
+            document.getElementById('submitModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('submitModal').classList.remove('active');
+        }
+
+        // Submit exam
+        async function submitExam() {
+            try {
+                const response = await fetch('/api/submit_exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answers: answers })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`Exam submitted successfully!\n\nScore: ${result.score}/${result.total}\nPercentage: ${result.percentage.toFixed(2)}%\nGrade: ${result.grade}`);
+                    window.location.href = '/student/results';
+                } else {
+                    alert('Failed to submit exam. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error submitting exam:', error);
+                alert('Failed to submit exam. Please try again.');
+            }
+        }
+
+        // Prevent page refresh
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        // Load exam on page load
+        window.onload = loadExam;
+    </script>
+</body>
+</html>
