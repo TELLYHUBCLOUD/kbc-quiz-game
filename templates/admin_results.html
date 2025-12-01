@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -213,16 +214,29 @@
         }
 
         @media print {
-            .navbar, .search-box, .export-btn, .back-btn { display: none; }
-            body { background: white; }
-            .card { box-shadow: none; }
+
+            .navbar,
+            .search-box,
+            .export-btn,
+            .back-btn {
+                display: none;
+            }
+
+            body {
+                background: white;
+            }
+
+            .card {
+                box-shadow: none;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="navbar">
         <h1>📊 All Student Results</h1>
-        <a href="/admin/dashboard" class="back-btn">← Back to Dashboard</a>
+        <a href="/admin_dashboard" class="back-btn">← Back to Dashboard</a>
     </div>
 
     <div class="container">
@@ -247,7 +261,8 @@
             </div>
 
             <div class="header">
-                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by name or roll number..." onkeyup="filterResults()">
+                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search by name or roll number..."
+                    onkeyup="filterResults()">
                 <button class="export-btn" onclick="exportResults()">📥 Export to CSV</button>
             </div>
 
@@ -290,9 +305,23 @@
                 const response = await fetch('/api/all_results');
                 const data = await response.json();
 
-                allResults = data.results;
-
                 document.getElementById('loading').style.display = 'none';
+
+                // Check for demo mode
+                if (data.demo_mode) {
+                    const noResultsDiv = document.getElementById('noResults');
+                    noResultsDiv.innerHTML = `
+                        \u003ch2\u003e⚠️ Demo Mode\u003c/h2\u003e
+                        \u003cp style="font-size: 18px; margin-top: 20px;"\u003e${data.message}\u003c/p\u003e
+                        \u003cp style="margin-top: 15px; color: #999;"\u003e
+                            To enable result storage, set the \u003ccode\u003eMONGO_URI\u003c/code\u003e environment variable with a valid MongoDB connection string.
+                        \u003c/p\u003e
+                    `;
+                    noResultsDiv.style.display = 'block';
+                    return;
+                }
+
+                allResults = data.results || [];
 
                 if (allResults.length === 0) {
                     document.getElementById('noResults').style.display = 'block';
@@ -316,9 +345,9 @@
 
             results.forEach((result, index) => {
                 const row = document.createElement('tr');
-                
+
                 const gradeClass = `grade-${result.grade.toLowerCase().replace('+', '-plus')}`;
-                
+
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td><strong>${result.student_name}</strong></td>
@@ -329,7 +358,7 @@
                     <td><span class="grade-badge ${gradeClass}">${result.grade}</span></td>
                     <td>${result.submitted_at}</td>
                 `;
-                
+
                 tbody.appendChild(row);
             });
         }
@@ -348,8 +377,8 @@
 
         function filterResults() {
             const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-            
-            const filtered = allResults.filter(result => 
+
+            const filtered = allResults.filter(result =>
                 result.student_name.toLowerCase().includes(searchTerm) ||
                 result.roll_number.toLowerCase().includes(searchTerm)
             );
@@ -359,7 +388,7 @@
 
         function exportResults() {
             let csv = 'Student Name,Roll Number,Total Questions,Correct Answers,Percentage,Grade,Exam Date\n';
-            
+
             allResults.forEach(result => {
                 csv += `${result.student_name},${result.roll_number},${result.total_questions},${result.correct_answers},${result.percentage.toFixed(2)}%,${result.grade},${result.submitted_at}\n`;
             });
@@ -377,4 +406,5 @@
         window.onload = loadResults;
     </script>
 </body>
+
 </html>
