@@ -628,6 +628,58 @@ def debug_session():
         "logged_in": session.get('logged_in')
     })
 
+# ✅ STUDENT RESULTS PAGE
+@app.route('/student/results')
+def student_results():
+    if not session.get('logged_in') or session.get('role') != 'student':
+        return redirect('/student_login')
+    
+    # Check if exam completed
+    if not session.get('exam_completed'):
+        return redirect('/exam')
+    
+    return render_template('student_results.html')
+
+# ✅ GET STUDENT RESULT API
+@app.route('/api/student/result')
+def get_student_result():
+    if not session.get('logged_in') or session.get('role') != 'student':
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+    
+    # Demo Mode: Return session result
+    if use_demo_mode:
+        result = session.get('exam_result')
+        if result:
+            return jsonify(result)
+        else:
+            return jsonify({"error": "No result found"}), 404
+    
+    # Real DB: Fetch from database
+    try:
+        user_id = session.get('user_id')
+        result = collections['results'].find_one({"student_id": ObjectId(user_id)})
+        
+        if not result:
+            return jsonify({"error": "No result found"}), 404
+        
+        return jsonify({
+            "student_name": result.get('name', 'N/A'),
+            "roll_number": result.get('roll_number', 'N/A'),
+            "score": result.get('score', 0),
+            "total": result.get('total', 0),
+            "percentage": result.get('percentage', 0),
+            "passed": result.get('passed', False),
+            "grade": calculate_grade(result.get('percentage', 0)),
+            "category_scores": result.get('category_scores', {}),
+            "submitted_at": result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S") if result.get('submitted_at') else 'N/A'
+        })
+    except Exception as e:
+        print(f"❌ Get student result error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 # ✅ START EXAM
 @app.route('/api/start_exam', methods=['POST'])
 def start_exam():
@@ -643,6 +695,10 @@ def start_exam():
         # DEMO MODE: Store exam in session
         if use_demo_mode:
             print("⚠️ Starting Demo Exam (Session Storage / Fallback)")
+            
+            # Check if already completed exam
+            if session.get('exam_completed'):
+                return jsonify({"error": "You have already completed the exam. Contact admin to retake."}), 403
             
             # Generate questions
             exam_questions = []
@@ -812,6 +868,11 @@ def submit_exam():
         # DEMO MODE SUBMISSION
         if use_demo_mode:
             print("⚠️ Demo Mode Submission (Fallback)")
+            
+            # Check if already submitted
+            if session.get('exam_completed'):
+                return jsonify({"error": "You have already completed the exam. Contact admin to retake."}), 403
+            
             score = 0
             total_questions = 0
             category_scores = {
@@ -849,6 +910,21 @@ def submit_exam():
             
             percentage = (score / total_questions * 100) if total_questions > 0 else 0
             passed = percentage >= 40
+            grade = calculate_grade(percentage)
+            
+            # Store result in session for demo mode
+            session['exam_completed'] = True
+            session['exam_result'] = {
+                "student_name": session.get('name', 'Demo Student'),
+                "roll_number": session.get('roll_number', 'DEMO001'),
+                "score": score,
+                "total": total_questions,
+                "percentage": round(percentage, 2),
+                "passed": passed,
+                "grade": grade,
+                "category_scores": category_scores,
+                "submitted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
             
             return jsonify({
                 "success": True,
@@ -857,7 +933,7 @@ def submit_exam():
                 "percentage": round(percentage, 2),
                 "passed": passed,
                 "category_scores": category_scores,
-                "grade": "Pass" if passed else "Fail"
+                "grade": grade
             })
 
         # REAL DB LOGIC
