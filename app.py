@@ -839,6 +839,7 @@ def submit_exam():
             passed = percentage >= 40
             
             return jsonify({
+                "success": True,
                 "score": score,
                 "total": total_questions,
                 "percentage": round(percentage, 2),
@@ -937,6 +938,7 @@ def submit_exam():
         session.pop('exam_id', None)
         
         return jsonify({
+            "success": True,
             "score": score,
             "total": total_questions,
             "percentage": round(percentage, 2),
