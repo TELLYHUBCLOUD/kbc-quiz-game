@@ -5,6 +5,7 @@ import secrets
 import os
 import random
 import tempfile
+import hashlib
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -667,8 +668,8 @@ def start_exam():
             
             questions_data = []
             for i, q in enumerate(exam_questions):
-                # Generate a pseudo-ID if not present
-                q_id = str(hash(q['q'] + q['category'])) 
+                # Generate a deterministic ID
+                q_id = generate_id(q['q'] + q['category'])
                 questions_data.append({
                     "id": q_id,
                     "number": i + 1,
@@ -805,7 +806,7 @@ def submit_exam():
             question_lookup = {}
             for category, questions in QUESTIONS_DATA.items():
                 for q in questions:
-                    q_id = str(hash(q['q'] + category))
+                    q_id = generate_id(q['q'] + category)
                     question_lookup[q_id] = {**q, "category": category}
             
             for q_id, user_answer in answers.items():
