@@ -1,7 +1,7 @@
-# app.py - Complete Advanced O Level Exam System with Random Questions
+# app.py - LOGIN FIXED VERSION
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 import os
 import random
@@ -10,7 +10,15 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
+
+# ⚠️ IMPORTANT: Session Configuration (YEH ZAROORI HAI)
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))  # 32 bytes = 256 bits
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+app.config['SESSION_COOKIE_SECURE'] = False  # True for HTTPS only
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # MongoDB Configuration
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
@@ -277,277 +285,394 @@ def index():
 
 @app.route('/student_login')
 def student_login():
+    # Clear any existing session
+    session.clear()
     return render_template('student_login.html')
 
 @app.route('/admin_login')
 def admin_login():
+    session.clear()
     return render_template('admin_login.html')
 
+# ✅ FIXED REGISTRATION
 @app.route('/api/register', methods=['POST'])
 def register():
     collections = get_collections()
     if not collections:
         return jsonify({"error": "Database not available"}), 500
     
-    data = request.json
+    try:
+        data = request.json
+        print(f"📝 Registration attempt: {data.get('roll_number')}")
+        
+        # Validate input
+        if not data.get('name') or not data.get('roll_number') or not data.get('password'):
+            return jsonify({"error": "All fields are required"}), 400
+        
+        # Check if user exists
+        existing_user = collections['users'].find_one({"roll_number": data['roll_number']})
+        if existing_user:
+            print(f"❌ Roll number already exists: {data['roll_number']}")
+            return jsonify({"error": "Roll number already registered"}), 400
+        
+        # Create user
+        user_data = {
+            "name": data['name'],
+            "roll_number": data['roll_number'],
+            "password": generate_password_hash(data['password'], method='pbkdf2:sha256'),
+            "role": "student",
+            "registered_at": datetime.now()
+        }
+        
+        user_id = collections['users'].insert_one(user_data).inserted_id
+        print(f"✅ User registered: {data['roll_number']} (ID: {user_id})")
+        
+        return jsonify({
+            "message": "Registration successful! Please login.",
+            "user_id": str(user_id)
+        })
     
-    # Check if user exists
-    if collections['users'].find_one({"roll_number": data['roll_number']}):
-        return jsonify({"error": "Roll number already registered"}), 400
-    
-    # Create user
-    user_data = {
-        "name": data['name'],
-        "roll_number": data['roll_number'],
-        "password": generate_password_hash(data['password']),
-        "role": "student",
-        "registered_at": datetime.now()
-    }
-    
-    user_id = collections['users'].insert_one(user_data).inserted_id
-    
-    return jsonify({"message": "Registration successful", "user_id": str(user_id)})
+    except Exception as e:
+        print(f"❌ Registration error: {str(e)}")
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
+# ✅ FIXED LOGIN
 @app.route('/api/login', methods=['POST'])
 def login():
     collections = get_collections()
     if not collections:
         return jsonify({"error": "Database not available"}), 500
     
-    data = request.json
+    try:
+        data = request.json
+        roll_number = data.get('roll_number', '').strip()
+        password = data.get('password', '')
+        
+        print(f"🔑 Login attempt: {roll_number}")
+        
+        if not roll_number or not password:
+            return jsonify({"error": "Roll number and password required"}), 400
+        
+        # Find user
+        user = collections['users'].find_one({"roll_number": roll_number})
+        
+        if not user:
+            print(f"❌ User not found: {roll_number}")
+            return jsonify({"error": "Invalid roll number or password"}), 401
+        
+        # Check password
+        if not check_password_hash(user['password'], password):
+            print(f"❌ Wrong password for: {roll_number}")
+            return jsonify({"error": "Invalid roll number or password"}), 401
+        
+        # ✅ SET SESSION (YEH IMPORTANT HAI)
+        session.clear()  # Clear any old session first
+        session['user_id'] = str(user['_id'])
+        session['roll_number'] = user['roll_number']
+        session['name'] = user['name']
+        session['role'] = user['role']
+        session['logged_in'] = True
+        session.permanent = True  # Make session permanent
+        
+        print(f"✅ Login successful: {roll_number} (Session ID: {session.get('user_id')})")
+        
+        return jsonify({
+            "message": "Login successful",
+            "role": user['role'],
+            "name": user['name'],
+            "roll_number": user['roll_number']
+        })
     
-    user = collections['users'].find_one({"roll_number": data['roll_number']})
-    
-    if not user or not check_password_hash(user['password'], data['password']):
-        return jsonify({"error": "Invalid credentials"}), 401
-    
-    session['user_id'] = str(user['_id'])
-    session['roll_number'] = user['roll_number']
-    session['name'] = user['name']
-    session['role'] = user['role']
-    
-    return jsonify({
-        "message": "Login successful",
-        "role": user['role'],
-        "name": user['name']
-    })
+    except Exception as e:
+        print(f"❌ Login error: {str(e)}")
+        return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
+# ✅ FIXED ADMIN LOGIN
 @app.route('/api/admin_login', methods=['POST'])
 def admin_login_api():
-    data = request.json
+    try:
+        data = request.json
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        print(f"🔐 Admin login attempt: {username}")
+        
+        # Default admin credentials (CHANGE IN PRODUCTION!)
+        if username == 'admin' and password == 'admin123':
+            session.clear()
+            session['user_id'] = 'admin'
+            session['role'] = 'admin'
+            session['name'] = 'Administrator'
+            session['logged_in'] = True
+            session.permanent = True
+            
+            print("✅ Admin login successful")
+            return jsonify({"message": "Admin login successful"})
+        
+        print(f"❌ Invalid admin credentials")
+        return jsonify({"error": "Invalid admin credentials"}), 401
     
-    # Default admin credentials (change in production)
-    if data['username'] == 'admin' and data['password'] == 'admin123':
-        session['user_id'] = 'admin'
-        session['role'] = 'admin'
-        session['name'] = 'Administrator'
-        return jsonify({"message": "Admin login successful"})
-    
-    return jsonify({"error": "Invalid admin credentials"}), 401
+    except Exception as e:
+        print(f"❌ Admin login error: {str(e)}")
+        return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
+# ✅ CHECK SESSION (DEBUG ENDPOINT)
+@app.route('/api/check_session')
+def check_session():
+    return jsonify({
+        "session_exists": 'user_id' in session,
+        "user_id": session.get('user_id'),
+        "roll_number": session.get('roll_number'),
+        "name": session.get('name'),
+        "role": session.get('role'),
+        "logged_in": session.get('logged_in', False)
+    })
+
+# ✅ EXAM PAGE (WITH SESSION CHECK)
 @app.route('/exam')
 def exam():
+    print(f"📄 Exam page accessed - Session: {session.get('user_id')}")
+    
     if 'user_id' not in session or session.get('role') != 'student':
+        print("❌ Unauthorized exam access - redirecting to login")
         return redirect(url_for('student_login'))
+    
     return render_template('exam.html', name=session.get('name'))
 
+# ✅ ADMIN DASHBOARD (WITH SESSION CHECK)
 @app.route('/admin_dashboard')
 def admin_dashboard():
+    print(f"📊 Admin dashboard accessed - Session: {session.get('user_id')}")
+    
     if 'user_id' not in session or session.get('role') != 'admin':
+        print("❌ Unauthorized admin access - redirecting to login")
         return redirect(url_for('admin_login'))
+    
     return render_template('admin_dashboard.html')
 
-# =================== EXAM RANDOMIZATION ===================
-
+# ✅ START EXAM (WITH SESSION CHECK)
 @app.route('/api/start_exam', methods=['POST'])
 def start_exam():
     collections = get_collections()
+    
     if 'user_id' not in session or not collections:
-        return jsonify({"error": "Unauthorized"}), 401
+        print(f"❌ Unauthorized exam start attempt")
+        return jsonify({"error": "Unauthorized. Please login again."}), 401
     
-    # Check if user already has an ongoing exam
-    existing_exam = collections['exams'].find_one({
-        "student_id": ObjectId(session['user_id']),
-        "status": "in_progress"
-    })
-    
-    if existing_exam:
-        return jsonify({"error": "You already have an ongoing exam"}), 400
-    
-    # RANDOMIZE: Get random 25 questions from each category (total 100)
-    exam_questions = []
-    for category in ['python', 'web_design', 'iot', 'fundamentals']:
-        all_cat_questions = list(collections['questions'].find({"category": category}))
-        
-        if len(all_cat_questions) >= 25:
-            selected_questions = random.sample(all_cat_questions, 25)
-        else:
-            selected_questions = all_cat_questions
-        
-        exam_questions.extend(selected_questions)
-    
-    # Shuffle all questions
-    random.shuffle(exam_questions)
-    
-    # Create exam session
-    exam_id = collections['exams'].insert_one({
-        "student_id": ObjectId(session['user_id']),
-        "roll_number": session.get('roll_number'),
-        "status": "in_progress",
-        "started_at": datetime.now(),
-        "questions": [str(q['_id']) for q in exam_questions],
-        "randomized": True
-    }).inserted_id
-    
-    session['exam_id'] = str(exam_id)
-    
-    # Return questions without answers
-    questions_data = []
-    for i, q in enumerate(exam_questions):
-        questions_data.append({
-            "id": str(q['_id']),
-            "number": i + 1,
-            "category": q['category'],
-            "question": q['question'],
-            "options": q['options'],
-            "difficulty": q.get('difficulty', 'basic')
+    try:
+        # Check if user already has an ongoing exam
+        existing_exam = collections['exams'].find_one({
+            "student_id": ObjectId(session['user_id']),
+            "status": "in_progress"
         })
+        
+        if existing_exam:
+            return jsonify({"error": "You already have an ongoing exam"}), 400
+        
+        # RANDOMIZE: Get random 25 questions from each category (total 100)
+        exam_questions = []
+        for category in ['python', 'web_design', 'iot', 'fundamentals']:
+            all_cat_questions = list(collections['questions'].find({"category": category}))
+            
+            if len(all_cat_questions) >= 25:
+                selected_questions = random.sample(all_cat_questions, 25)
+            else:
+                selected_questions = all_cat_questions
+            
+            exam_questions.extend(selected_questions)
+        
+        # Shuffle all questions
+        random.shuffle(exam_questions)
+        
+        # Create exam session
+        exam_id = collections['exams'].insert_one({
+            "student_id": ObjectId(session['user_id']),
+            "roll_number": session.get('roll_number'),
+            "name": session.get('name'),
+            "status": "in_progress",
+            "started_at": datetime.now(),
+            "questions": [str(q['_id']) for q in exam_questions],
+            "randomized": True
+        }).inserted_id
+        
+        session['exam_id'] = str(exam_id)
+        
+        # Return questions without answers
+        questions_data = []
+        for i, q in enumerate(exam_questions):
+            questions_data.append({
+                "id": str(q['_id']),
+                "number": i + 1,
+                "category": q['category'],
+                "question": q['question'],
+                "options": q['options'],
+                "difficulty": q.get('difficulty', 'basic')
+            })
+        
+        print(f"✅ Exam started for {session.get('roll_number')} - {len(questions_data)} questions")
+        
+        return jsonify({"questions": questions_data})
     
-    print(f"✅ Exam started for {session.get('roll_number')} - {len(questions_data)} random questions")
-    
-    return jsonify({"questions": questions_data})
+    except Exception as e:
+        print(f"❌ Start exam error: {str(e)}")
+        return jsonify({"error": f"Failed to start exam: {str(e)}"}), 500
 
+# ✅ SUBMIT EXAM
 @app.route('/api/submit_exam', methods=['POST'])
 def submit_exam():
     collections = get_collections()
     if 'user_id' not in session or 'exam_id' not in session or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
-    data = request.json
-    answers = data.get('answers', {})
+    try:
+        data = request.json
+        answers = data.get('answers', {})
+        
+        # Get exam data
+        exam = collections['exams'].find_one({"_id": ObjectId(session['exam_id'])})
+        if not exam:
+            return jsonify({"error": "Exam not found"}), 404
+        
+        # Calculate score
+        score = 0
+        total_questions = len(exam['questions'])
+        category_scores = {"python": {"correct": 0, "total": 0}, 
+                           "web_design": {"correct": 0, "total": 0},
+                           "iot": {"correct": 0, "total": 0},
+                           "fundamentals": {"correct": 0, "total": 0}}
+        
+        for q_id in exam['questions']:
+            question = collections['questions'].find_one({"_id": ObjectId(q_id)})
+            if question:
+                category = question['category']
+                category_scores[category]['total'] += 1
+                
+                user_answer = answers.get(q_id, -1)
+                if user_answer == question['answer']:
+                    score += 1
+                    category_scores[category]['correct'] += 1
+        
+        percentage = (score / total_questions * 100) if total_questions > 0 else 0
+        
+        # Save result
+        result_data = {
+            "exam_id": ObjectId(session['exam_id']),
+            "student_id": ObjectId(session['user_id']),
+            "roll_number": session.get('roll_number'),
+            "name": session.get('name'),
+            "score": score,
+            "total": total_questions,
+            "percentage": round(percentage, 2),
+            "category_scores": category_scores,
+            "submitted_at": datetime.now(),
+            "answers": answers
+        }
+        
+        collections['results'].insert_one(result_data)
+        
+        # Update exam status
+        collections['exams'].update_one(
+            {"_id": ObjectId(session['exam_id'])},
+            {"$set": {"status": "completed", "completed_at": datetime.now()}}
+        )
+        
+        print(f"✅ Exam submitted: {session.get('roll_number')} - Score: {score}/{total_questions}")
+        
+        # Clear exam session
+        session.pop('exam_id', None)
+        
+        return jsonify({
+            "score": score,
+            "total": total_questions,
+            "percentage": round(percentage, 2),
+            "category_scores": category_scores
+        })
     
-    # Get exam data
-    exam = collections['exams'].find_one({"_id": ObjectId(session['exam_id'])})
-    if not exam:
-        return jsonify({"error": "Exam not found"}), 404
-    
-    # Calculate score
-    score = 0
-    total_questions = len(exam['questions'])
-    category_scores = {"python": {"correct": 0, "total": 0}, 
-                       "web_design": {"correct": 0, "total": 0},
-                       "iot": {"correct": 0, "total": 0},
-                       "fundamentals": {"correct": 0, "total": 0}}
-    
-    for q_id in exam['questions']:
-        question = collections['questions'].find_one({"_id": ObjectId(q_id)})
-        if question:
-            category = question['category']
-            category_scores[category]['total'] += 1
-            
-            user_answer = answers.get(q_id, -1)
-            if user_answer == question['answer']:
-                score += 1
-                category_scores[category]['correct'] += 1
-    
-    percentage = (score / total_questions * 100) if total_questions > 0 else 0
-    
-    # Save result
-    result_data = {
-        "exam_id": ObjectId(session['exam_id']),
-        "student_id": ObjectId(session['user_id']),
-        "roll_number": session.get('roll_number'),
-        "name": session.get('name'),
-        "score": score,
-        "total": total_questions,
-        "percentage": round(percentage, 2),
-        "category_scores": category_scores,
-        "submitted_at": datetime.now(),
-        "answers": answers
-    }
-    
-    collections['results'].insert_one(result_data)
-    
-    # Update exam status
-    collections['exams'].update_one(
-        {"_id": ObjectId(session['exam_id'])},
-        {"$set": {"status": "completed", "completed_at": datetime.now()}}
-    )
-    
-    # Clear exam session
-    session.pop('exam_id', None)
-    
-    return jsonify({
-        "score": score,
-        "total": total_questions,
-        "percentage": round(percentage, 2),
-        "category_scores": category_scores
-    })
+    except Exception as e:
+        print(f"❌ Submit exam error: {str(e)}")
+        return jsonify({"error": f"Failed to submit exam: {str(e)}"}), 500
 
+# ✅ GET RESULTS
 @app.route('/api/results')
 def get_results():
     collections = get_collections()
     if 'user_id' not in session or not collections:
         return jsonify({"error": "Unauthorized"}), 401
     
-    if session.get('role') == 'admin':
-        results = list(collections['results'].find().sort("submitted_at", -1))
-    else:
-        results = list(collections['results'].find({"student_id": ObjectId(session['user_id'])}).sort("submitted_at", -1))
+    try:
+        if session.get('role') == 'admin':
+            results = list(collections['results'].find().sort("submitted_at", -1))
+        else:
+            results = list(collections['results'].find({
+                "student_id": ObjectId(session['user_id'])
+            }).sort("submitted_at", -1))
+        
+        # Convert ObjectId to string
+        for result in results:
+            result['_id'] = str(result['_id'])
+            result['exam_id'] = str(result['exam_id'])
+            result['student_id'] = str(result['student_id'])
+            result['submitted_at'] = result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S")
+        
+        return jsonify(results)
     
-    # Convert ObjectId to string
-    for result in results:
-        result['_id'] = str(result['_id'])
-        result['exam_id'] = str(result['exam_id'])
-        result['student_id'] = str(result['student_id'])
-        result['submitted_at'] = result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S")
-    
-    return jsonify(results)
+    except Exception as e:
+        print(f"❌ Get results error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
+# ✅ LOGOUT
 @app.route('/api/logout', methods=['POST'])
 def logout():
+    roll = session.get('roll_number', 'Unknown')
     session.clear()
+    print(f"👋 Logout: {roll}")
     return jsonify({"message": "Logged out successfully"})
 
-# =================== INITIALIZATION ===================
-
+# ✅ INIT DATABASE
 @app.route('/api/init_db', methods=['POST'])
 def init_database():
     collections = get_collections()
     if not collections:
         return jsonify({"error": "Database not available"}), 500
     
-    # Clear existing questions
-    collections['questions'].delete_many({})
+    try:
+        # Clear existing questions
+        collections['questions'].delete_many({})
+        
+        # Insert all 200 questions
+        total_inserted = 0
+        for category, questions in QUESTIONS_DATA.items():
+            for q_data in questions:
+                question_doc = {
+                    "category": category,
+                    "question": q_data['q'],
+                    "options": q_data['options'],
+                    "answer": q_data['answer'],
+                    "difficulty": q_data['difficulty']
+                }
+                collections['questions'].insert_one(question_doc)
+                total_inserted += 1
+        
+        print(f"✅ Database initialized with {total_inserted} questions")
+        
+        # Count by category
+        stats = {}
+        for category in ['python', 'web_design', 'iot', 'fundamentals']:
+            count = collections['questions'].count_documents({"category": category})
+            stats[category] = count
+        
+        return jsonify({
+            "message": "Database initialized successfully",
+            "total_questions": total_inserted,
+            "by_category": stats
+        })
     
-    # Insert all 200 questions
-    total_inserted = 0
-    for category, questions in QUESTIONS_DATA.items():
-        for q_data in questions:
-            question_doc = {
-                "category": category,
-                "question": q_data['q'],
-                "options": q_data['options'],
-                "answer": q_data['answer'],
-                "difficulty": q_data['difficulty']
-            }
-            collections['questions'].insert_one(question_doc)
-            total_inserted += 1
-    
-    print(f"✅ Database initialized with {total_inserted} questions")
-    
-    # Count by category
-    stats = {}
-    for category in ['python', 'web_design', 'iot', 'fundamentals']:
-        count = collections['questions'].count_documents({"category": category})
-        stats[category] = count
-    
-    return jsonify({
-        "message": "Database initialized successfully",
-        "total_questions": total_inserted,
-        "by_category": stats
-    })
+    except Exception as e:
+        print(f"❌ Init DB error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    print(f"🚀 Starting Flask app on port {port}")
+    print(f"🔑 Secret key: {app.secret_key[:16]}...")
     app.run(debug=True, host='0.0.0.0', port=port)
