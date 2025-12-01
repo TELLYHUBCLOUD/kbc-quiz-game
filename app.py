@@ -12,7 +12,7 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 
-# MongoDB Configuration - Connect FIRST
+
 MONGO_URI = os.environ.get('mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
 
 client = None
@@ -34,17 +34,11 @@ except Exception as e:
 
 db = client.olevel_exam
 
-# Session Configuration - Use filesystem if MongoDB session fails
-# Session Configuration - Use filesystem if MongoDB session fails
-# FIXED: Use static secret key for dev to prevent session invalidation on restart
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key_fixed_12345')
 app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
-
-# NOTE: Removed Flask-Session (filesystem) to support serverless/Vercel environments.
-# Default Flask sessions use signed cookies which persist on the client side.
 
 def get_collections():
     """Get database collections with connection check"""
@@ -66,7 +60,6 @@ def get_collections():
 # =================== COMPLETE QUESTIONS DATABASE - 200 QUESTIONS ===================
 QUESTIONS_DATA = {
     "python": [
-        # Basic Level (1-15)
         {"q": "What is Python?", "options": ["A programming language", "A snake", "A software", "A framework"], "answer": 0, "difficulty": "basic"},
         {"q": "Which keyword is used to define a function in Python?", "options": ["function", "def", "func", "define"], "answer": 1, "difficulty": "basic"},
         {"q": "What is the output of print(2 ** 3)?", "options": ["5", "6", "8", "9"], "answer": 2, "difficulty": "basic"},
@@ -311,12 +304,9 @@ def init_db():
     global IS_MOCK_DB
     try:
         if db is not None:
-            # Check if we are using mongomock
             if 'mongomock' in str(type(client)):
                 IS_MOCK_DB = True
                 print("⚠️ Running in MOCK DB mode (Stateless).")
-            
-            # Check if questions exist
             try:
                 count = db.questions.count_documents({})
             except:
@@ -337,10 +327,8 @@ def init_db():
                 print(f"✅ Database already contains {count} questions.")
     except Exception as e:
         print(f"❌ Database initialization error: {e}")
-
-# Initialize DB on startup
+        
 init_db()
-
 def login_required(f):
     """Decorator to check if user is logged in"""
     from functools import wraps
@@ -373,7 +361,6 @@ def index():
 
 @app.route('/student_login')
 def student_login():
-    # Clear any existing session
     session.clear()
     return render_template('student_login.html')
 
@@ -382,17 +369,14 @@ def admin_login():
     session.clear()
     return render_template('admin_login.html')
 
-# ✅ CHECK RESULT PAGE
 @app.route('/check_result')
 def check_result_page():
     return render_template('check_result.html')
 
-# ✅ VIEW RESULT PAGE (Guest)
 @app.route('/view_result')
 def view_result_page():
     return render_template('view_result.html')
 
-# ✅ CHECK RESULT API
 @app.route('/api/check_result', methods=['POST'])
 def check_result_api():
     try:
@@ -405,15 +389,11 @@ def check_result_api():
         collections = get_collections()
         use_demo_mode = IS_MOCK_DB or (collections is None)
         
-        # Demo Mode: Check session storage (limited)
         if use_demo_mode:
-            # In demo mode, we can't search by roll number across sessions
-            # Return a message
             return jsonify({
                 "error": "Result checking by roll number is only available with a real database. Please login to view your result."
             }), 404
         
-        # Real DB: Search by roll number
         result = collections['results'].find_one({"roll_number": roll_number})
         
         if not result:
@@ -437,10 +417,8 @@ def check_result_api():
         print(f"❌ Check result error: {str(e)}")
         return jsonify({"error": "Failed to fetch result"}), 500
 
-# ✅ FIXED REGISTRATION
 @app.route('/api/register', methods=['POST'])
 def register():
-    # If Mock DB, just simulate success
     if IS_MOCK_DB:
         data = request.json
         return jsonify({
@@ -458,8 +436,6 @@ def register():
             return jsonify({"error": "No data provided"}), 400
             
         print(f"📝 Registration attempt: {data.get('roll_number')}")
-        
-        # Validate input
         name = data.get('name', '').strip()
         roll_number = data.get('roll_number', '').strip()
         password = data.get('password', '')
@@ -470,13 +446,11 @@ def register():
         if len(password) < 4:
             return jsonify({"error": "Password must be at least 4 characters"}), 400
         
-        # Check if user exists
         existing_user = collections['users'].find_one({"roll_number": roll_number})
         if existing_user:
             print(f"❌ Roll number already exists: {roll_number}")
             return jsonify({"error": "Roll number already registered"}), 400
         
-        # Create user
         user_data = {
             "name": name,
             "roll_number": roll_number,
@@ -500,7 +474,6 @@ def register():
         traceback.print_exc()
         return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
-# ✅ FIXED LOGIN
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
@@ -515,8 +488,7 @@ def login():
         
         if not roll_number or not password:
             return jsonify({"error": "Roll number and password required"}), 400
-            
-        # DEMO MODE LOGIN
+
         if IS_MOCK_DB:
             print("⚠️ Demo Mode Login: Accepting any credentials")
             session.clear()
@@ -536,25 +508,21 @@ def login():
         if not collections:
             return jsonify({"error": "Database not available. Please try again later."}), 500
 
-        # Find user
         user = collections['users'].find_one({"roll_number": roll_number})
         
         if not user:
             print(f"❌ User not found: {roll_number}")
             return jsonify({"error": "Invalid roll number or password"}), 401
         
-        # Check password
         if not check_password_hash(user['password'], password):
             print(f"❌ Wrong password for: {roll_number}")
             return jsonify({"error": "Invalid roll number or password"}), 401
-        
-        # Check if already completed exam
+
         existing_result = collections['results'].find_one({"student_id": user['_id']})
         if existing_result:
             print(f"⚠️ User already completed exam: {roll_number}")
             return jsonify({"error": "You have already completed the exam"}), 403
         
-        # ✅ CLEAR OLD SESSION AND SET NEW ONE
         session.clear()
         session['user_id'] = str(user['_id'])
         session['roll_number'] = user['roll_number']
@@ -579,7 +547,6 @@ def login():
         traceback.print_exc()
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
-# ✅ FIXED ADMIN LOGIN
 @app.route('/api/admin_login', methods=['POST'])
 def admin_login_api():
     try:
@@ -589,10 +556,7 @@ def admin_login_api():
             
         username = data.get('username', '').strip()
         password = data.get('password', '')
-        
         print(f"🔐 Admin login attempt: '{username}'")
-        
-        # Default admin credentials
         ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
         ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
         
@@ -616,7 +580,6 @@ def admin_login_api():
         traceback.print_exc()
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
-# ✅ CHECK SESSION (DEBUG ENDPOINT)
 @app.route('/api/check_session')
 def check_session_api():
     return jsonify({
@@ -629,7 +592,6 @@ def check_session_api():
         "is_mock_db": IS_MOCK_DB
     })
 
-# ✅ EXAM PAGE
 @app.route('/exam')
 def exam():
     print(f"📄 Exam page request")
@@ -645,7 +607,6 @@ def exam():
                          name=session.get('name'),
                          roll_number=session.get('roll_number'))
 
-# ✅ ADMIN DASHBOARD
 @app.route('/admin_dashboard')
 def admin_dashboard():
     print(f"📊 Admin dashboard request")
@@ -658,19 +619,16 @@ def admin_dashboard():
     
     return render_template('admin_dashboard.html')
 
-# ✅ ADMIN RESULTS PAGE
 @app.route('/admin/all_results')
 def admin_all_results():
     if not session.get('logged_in') or session.get('role') != 'admin':
         return redirect('/admin_login')
     
-    # Check demo mode
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
     
     return render_template('admin_results.html', demo_mode=use_demo_mode)
 
-# ✅ DEBUG SESSION
 @app.route('/api/debug/session')
 def debug_session():
     return jsonify({
@@ -683,19 +641,14 @@ def debug_session():
         "logged_in": session.get('logged_in')
     })
 
-# ✅ STUDENT RESULTS PAGE
 @app.route('/student/results')
 def student_results():
     if not session.get('logged_in') or session.get('role') != 'student':
         return redirect('/student_login')
-    
-    # Check if exam completed
     if not session.get('exam_completed'):
         return redirect('/exam')
-    
     return render_template('student_results.html')
 
-# ✅ GET STUDENT RESULT API
 @app.route('/api/student/result')
 def get_student_result():
     if not session.get('logged_in') or session.get('role') != 'student':
@@ -703,23 +656,17 @@ def get_student_result():
     
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
-    
-    # Demo Mode: Return session result
     if use_demo_mode:
         result = session.get('exam_result')
         if result:
             return jsonify(result)
         else:
             return jsonify({"error": "No result found"}), 404
-    
-    # Real DB: Fetch from database
     try:
         user_id = session.get('user_id')
-        result = collections['results'].find_one({"student_id": ObjectId(user_id)})
-        
+        result = collections['results'].find_one({"student_id": ObjectId(user_id)})     
         if not result:
             return jsonify({"error": "No result found"}), 404
-        
         return jsonify({
             "student_name": result.get('name', 'N/A'),
             "roll_number": result.get('roll_number', 'N/A'),
@@ -734,28 +681,20 @@ def get_student_result():
     except Exception as e:
         print(f"❌ Get student result error: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-# ✅ START EXAM
+        
 @app.route('/api/start_exam', methods=['POST'])
 def start_exam():
     if not session.get('logged_in') or session.get('role') != 'student':
         print(f"❌ Unauthorized exam start attempt")
         return jsonify({"error": "Unauthorized. Please login again."}), 401
-    
-    # Check if we should use Demo Mode (Mock DB OR Real DB unavailable)
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
 
     try:
-        # DEMO MODE: Store exam in session
         if use_demo_mode:
             print("⚠️ Starting Demo Exam (Session Storage / Fallback)")
-            
-            # Check if already completed exam
             if session.get('exam_completed'):
                 return jsonify({"error": "You have already completed the exam. Contact admin to retake."}), 403
-            
-            # Generate questions
             exam_questions = []
             for category in ['python', 'web_design', 'iot', 'fundamentals']:
                 questions_in_category = QUESTIONS_DATA.get(category, [])
@@ -764,41 +703,13 @@ def start_exam():
                 else:
                     selected = questions_in_category
                 for q in selected:
-                    # Add category if missing (should be there from init_db logic but safe to add)
                     q_copy = q.copy()
                     q_copy['category'] = category
                     exam_questions.append(q_copy)
             
             random.shuffle(exam_questions)
-            
-            # Store full exam state in session (compressed/minimal)
-            # We can't store objects, so store indices or full data?
-            # Storing full data might be too big for cookie (4KB limit).
-            # Strategy: Store only indices if possible, or use QUESTIONS_DATA lookup.
-            # But QUESTIONS_DATA is static. So we can just store list of (category, index).
-            
-            # Better: Just store the question list in session? 100 questions * ~200 bytes = 20KB. Too big for cookie.
-            # We MUST use server-side storage or reduce size.
-            # Since we removed server-side session, we have a problem for 100 questions in cookie.
-            
-            # ALTERNATIVE: Just return questions to client and trust client for Demo?
-            # Or assume random seed?
-            # Let's use a fixed seed based on user_id for demo?
-            # No, random.shuffle.
-            
-            # OK, for Vercel Demo without DB, we can't easily persist 100 questions state securely.
-            # Compromise: Send questions to client. When submitting, client sends back answers.
-            # We re-grade based on the question text/ID?
-            # We can send the "correct answer" to the client but encrypted? No.
-            
-            # Let's just generate the questions and send them.
-            # For submission, we will rely on the client sending back the Question ID and we look it up in QUESTIONS_DATA.
-            # We don't need to persist the *exact* exam instance in DB.
-            # We just need to grade the answers provided against the static data.
-            
             questions_data = []
             for i, q in enumerate(exam_questions):
-                # Generate a deterministic ID
                 q_id = generate_id(q['q'] + q['category'])
                 questions_data.append({
                     "id": q_id,
@@ -810,22 +721,17 @@ def start_exam():
                 })
             
             return jsonify({"questions": questions_data, "resumed": False})
-
-        # REAL DB LOGIC
         collections = get_collections()
         if not collections:
             return jsonify({"error": "Database not available"}), 500
         
         user_id = session.get('user_id')
-        
-        # Check if user already has an ongoing exam
         existing_exam = collections['exams'].find_one({
             "student_id": ObjectId(user_id),
             "status": "in_progress"
         })
         
         if existing_exam:
-            # Return existing exam questions
             exam_questions = []
             for q_id in existing_exam['questions']:
                 q = collections['questions'].find_one({"_id": ObjectId(q_id)})
@@ -847,28 +753,19 @@ def start_exam():
             
             print(f"📋 Returning existing exam for {session.get('roll_number')}")
             return jsonify({"questions": questions_data, "resumed": True})
-        
-        # Check if already completed
         existing_result = collections['results'].find_one({"student_id": ObjectId(user_id)})
         if existing_result:
             return jsonify({"error": "You have already completed the exam"}), 400
-        
-        # RANDOMIZE: Get random 25 questions from each category (total 100)
         exam_questions = []
         for category in ['python', 'web_design', 'iot', 'fundamentals']:
             all_cat_questions = list(collections['questions'].find({"category": category}))
-            
             if len(all_cat_questions) >= 25:
                 selected_questions = random.sample(all_cat_questions, 25)
             else:
                 selected_questions = all_cat_questions
-            
             exam_questions.extend(selected_questions)
-        
-        # Shuffle all questions
         random.shuffle(exam_questions)
         
-        # Create exam session
         exam_doc = {
             "student_id": ObjectId(user_id),
             "roll_number": session.get('roll_number'),
@@ -883,8 +780,6 @@ def start_exam():
         exam_id = result.inserted_id
         
         session['exam_id'] = str(exam_id)
-        
-        # Return questions without answers
         questions_data = []
         for i, q in enumerate(exam_questions):
             questions_data.append({
@@ -906,25 +801,18 @@ def start_exam():
         traceback.print_exc()
         return jsonify({"error": f"Failed to start exam: {str(e)}"}), 500
 
-# ✅ SUBMIT EXAM
 @app.route('/api/submit_exam', methods=['POST'])
 def submit_exam():
     if not session.get('logged_in') or session.get('role') != 'student':
         return jsonify({"error": "Unauthorized"}), 401
-    
-    # Check if we should use Demo Mode (Mock DB OR Real DB unavailable)
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
 
     try:
         data = request.json
         answers = data.get('answers', {})
-        
-        # DEMO MODE SUBMISSION
         if use_demo_mode:
             print("⚠️ Demo Mode Submission (Fallback)")
-            
-            # Check if already submitted
             if session.get('exam_completed'):
                 return jsonify({"error": "You have already completed the exam. Contact admin to retake."}), 403
             
@@ -936,8 +824,6 @@ def submit_exam():
                 "iot": {"correct": 0, "total": 0},
                 "fundamentals": {"correct": 0, "total": 0}
             }
-            
-            # Rebuild lookup map with deterministic IDs
             question_lookup = {}
             for category, questions in QUESTIONS_DATA.items():
                 for q in questions:
@@ -959,15 +845,11 @@ def submit_exam():
                     if user_answer == question['answer']:
                         score += 1
                         category_scores[cat]['correct'] += 1
-            
-            # Adjust total if needed (assume 100)
             total_questions = 100 
             
             percentage = (score / total_questions * 100) if total_questions > 0 else 0
             passed = percentage >= 40
             grade = calculate_grade(percentage)
-            
-            # Store result in session for demo mode
             session['exam_completed'] = True
             session['exam_result'] = {
                 "student_name": session.get('name', 'Demo Student'),
@@ -990,14 +872,10 @@ def submit_exam():
                 "category_scores": category_scores,
                 "grade": grade
             })
-
-        # REAL DB LOGIC
         if not collections:
-            return jsonify({"error": "Database not available"}), 500
-            
+            return jsonify({"error": "Database not available"}), 500   
         if not session.get('exam_id'):
             return jsonify({"error": "No active exam found"}), 400
-            
         exam_id = session.get('exam_id')
         user_id = session.get('user_id')
         
@@ -1007,8 +885,7 @@ def submit_exam():
             
         if exam['status'] == 'completed':
             return jsonify({"error": "Exam already submitted"}), 400
-        
-        # Calculate score
+    
         score = 0
         total_questions = len(exam['questions'])
         category_scores = {
@@ -1048,10 +925,7 @@ def submit_exam():
         
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
         
-        # Determine pass/fail (40% pass mark)
         passed = percentage >= 40
-        
-        # Save result
         result_data = {
             "exam_id": ObjectId(exam_id),
             "student_id": ObjectId(user_id),
@@ -1068,16 +942,12 @@ def submit_exam():
         }
         
         collections['results'].insert_one(result_data)
-        
-        # Update exam status
         collections['exams'].update_one(
             {"_id": ObjectId(exam_id)},
             {"$set": {"status": "completed", "completed_at": datetime.now()}}
         )
         
         print(f"✅ Exam submitted: {session.get('roll_number')} - Score: {score}/{total_questions} ({percentage:.1f}%)")
-        
-        # Clear exam session but keep user logged in
         session.pop('exam_id', None)
         
         return jsonify({
@@ -1094,8 +964,6 @@ def submit_exam():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Failed to submit exam: {str(e)}"}), 500
-
-# ✅ GET RESULTS
 @app.route('/api/results')
 def get_results():
     if not session.get('logged_in'):
@@ -1103,8 +971,6 @@ def get_results():
     
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
-    
-    # Demo Mode: No persistent results
     if use_demo_mode:
         return jsonify({
             "demo_mode": True,
@@ -1119,8 +985,6 @@ def get_results():
             results = list(collections['results'].find({
                 "student_id": ObjectId(session['user_id'])
             }).sort("submitted_at", -1))
-        
-        # Convert ObjectId to string for JSON serialization
         formatted_results = []
         for result in results:
             formatted_result = {
@@ -1145,8 +1009,7 @@ def get_results():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
-# ✅ GET ALL RESULTS (ADMIN) - Alias for compatibility
+        
 @app.route('/api/all_results')
 def get_all_results():
     if not session.get('logged_in') or session.get('role') != 'admin':
@@ -1154,16 +1017,12 @@ def get_all_results():
     
     collections = get_collections()
     use_demo_mode = IS_MOCK_DB or (collections is None)
-    
-    # Demo Mode: Return formatted response
     if use_demo_mode:
         return jsonify({
             "demo_mode": True,
             "message": "Demo Mode: Results are not persisted. Connect a real MongoDB database to store and view results.",
             "results": []
         })
-    
-    # Real DB: Return results
     try:
         results = list(collections['results'].find().sort("submitted_at", -1))
         
@@ -1193,7 +1052,6 @@ def calculate_grade(percentage):
     elif percentage >= 50: return "D"
     else: return "F"
 
-# ✅ GET ALL STUDENTS (ADMIN)
 @app.route('/api/admin/students')
 def get_all_students():
     collections = get_collections()
@@ -1209,7 +1067,6 @@ def get_all_students():
         
         formatted_students = []
         for student in students:
-            # Check if student has completed exam
             result = collections['results'].find_one({"student_id": student['_id']})
             
             formatted_student = {
@@ -1229,8 +1086,6 @@ def get_all_students():
     except Exception as e:
         print(f"❌ Get students error: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-# ✅ DELETE STUDENT (ADMIN)
 @app.route('/api/admin/delete_student/<student_id>', methods=['DELETE'])
 def delete_student(student_id):
     collections = get_collections()
@@ -1242,43 +1097,31 @@ def delete_student(student_id):
         return jsonify({"error": "Database not available"}), 500
     
     try:
-        # Delete user
         collections['users'].delete_one({"_id": ObjectId(student_id)})
-        # Delete their exams
         collections['exams'].delete_many({"student_id": ObjectId(student_id)})
-        # Delete their results
         collections['results'].delete_many({"student_id": ObjectId(student_id)})
-        
         return jsonify({"message": "Student deleted successfully"})
     
     except Exception as e:
         print(f"❌ Delete student error: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-# ✅ RESET STUDENT EXAM (ADMIN)
+        
 @app.route('/api/admin/reset_exam/<student_id>', methods=['POST'])
 def reset_student_exam(student_id):
     collections = get_collections()
-    
     if not session.get('logged_in') or session.get('role') != 'admin':
         return jsonify({"error": "Admin access required"}), 403
-    
     if not collections:
         return jsonify({"error": "Database not available"}), 500
-    
     try:
-        # Delete their exams
         collections['exams'].delete_many({"student_id": ObjectId(student_id)})
-        # Delete their results
         collections['results'].delete_many({"student_id": ObjectId(student_id)})
-        
         return jsonify({"message": "Student exam reset successfully"})
     
     except Exception as e:
         print(f"❌ Reset exam error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# ✅ LOGOUT
 @app.route('/api/logout', methods=['POST'])
 def logout():
     roll = session.get('roll_number', session.get('name', 'Unknown'))
@@ -1286,22 +1129,13 @@ def logout():
     print(f"👋 Logout: {roll}")
     return jsonify({"message": "Logged out successfully"})
 
-# ✅ INIT DATABASE
 @app.route('/api/init_db', methods=['POST'])
 def init_database():
     collections = get_collections()
     if not collections:
         return jsonify({"error": "Database not available"}), 500
-    
-    # Optional: Require admin for this
-    # if not session.get('logged_in') or session.get('role') != 'admin':
-    #     return jsonify({"error": "Admin access required"}), 403
-    
     try:
-        # Clear existing questions
         collections['questions'].delete_many({})
-        
-        # Insert all questions
         total_inserted = 0
         for category, questions in QUESTIONS_DATA.items():
             for q_data in questions:
@@ -1316,8 +1150,6 @@ def init_database():
                 total_inserted += 1
         
         print(f"✅ Database initialized with {total_inserted} questions")
-        
-        # Count by category
         stats = {}
         for category in ['python', 'web_design', 'iot', 'fundamentals']:
             count = collections['questions'].count_documents({"category": category})
@@ -1335,7 +1167,6 @@ def init_database():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# ✅ GET QUESTION STATS
 @app.route('/api/question_stats')
 def get_question_stats():
     collections = get_collections()
@@ -1349,14 +1180,11 @@ def get_question_stats():
             count = collections['questions'].count_documents({"category": category})
             stats[category] = count
             total += count
-        
         stats['total'] = total
         return jsonify(stats)
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ✅ HEALTH CHECK
 @app.route('/api/health')
 def health_check():
     db_status = "connected" if get_collections() else "disconnected"
@@ -1392,7 +1220,6 @@ if __name__ == '__main__':
     print(f"📦 Session type: {app.config['SESSION_TYPE']}")
     print(f"🐛 Debug mode: {debug}")
     
-    # Initialize database on startup
     collections = get_collections()
     if collections:
         question_count = collections['questions'].count_documents({})
