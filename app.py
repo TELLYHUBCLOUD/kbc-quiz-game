@@ -11,19 +11,27 @@ from bson.objectid import ObjectId
 app = Flask(__name__)
 
 # MongoDB Configuration - Connect FIRST
-MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
+# MongoDB Configuration - Connect FIRST
+MONGO_URI = os.environ.get('MONGO_URI')
 
 client = None
 db = None
 
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    db = client.olevel_exam
-    client.server_info()
-    print("✅ MongoDB connected successfully!")
+    if MONGO_URI:
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client.server_info()
+        print("✅ MongoDB connected successfully!")
+    else:
+        raise Exception("No MONGO_URI provided")
 except Exception as e:
-    print(f"❌ MongoDB connection error: {e}")
-    db = None
+    print(f"⚠️ MongoDB connection error or not configured: {e}")
+    print("⚠️ Switching to mongomock for local development...")
+    import mongomock
+    client = mongomock.MongoClient()
+    print("✅ Mock MongoDB connected successfully!")
+
+db = client.olevel_exam
 
 # Session Configuration - Use filesystem if MongoDB session fails
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
