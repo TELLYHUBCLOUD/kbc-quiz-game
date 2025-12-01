@@ -1,5 +1,5 @@
-# app.py - LOGIN FIXED VERSION
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import secrets
@@ -11,14 +11,15 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 
-# ⚠️ IMPORTANT: Session Configuration (YEH ZAROORI HAI)
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))  # 32 bytes = 256 bits
-app.config['SESSION_TYPE'] = 'filesystem'
+# CRITICAL: Session Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['SESSION_TYPE'] = 'mongodb'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
-app.config['SESSION_COOKIE_SECURE'] = False  # True for HTTPS only
+app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_MONGODB'] = None  # Will be set after MongoDB connects
 
 # MongoDB Configuration
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
@@ -27,11 +28,16 @@ try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client.olevel_exam
     client.server_info()
+    
+    # Set MongoDB for session storage
+    app.config['SESSION_MONGODB'] = client
+    app.config['SESSION_MONGODB_DB'] = 'olevel_exam'
+    app.config['SESSION_MONGODB_COLLECT'] = 'sessions'
+    
     print("✅ MongoDB connected successfully!")
 except Exception as e:
     print(f"❌ MongoDB connection error: {e}")
     db = None
-
 def get_collections():
     if db is not None:
         return {
@@ -336,7 +342,6 @@ def register():
         print(f"❌ Registration error: {str(e)}")
         return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
-# ✅ FIXED LOGIN
 @app.route('/api/login', methods=['POST'])
 def login():
     collections = get_collections()
@@ -365,29 +370,37 @@ def login():
             print(f"❌ Wrong password for: {roll_number}")
             return jsonify({"error": "Invalid roll number or password"}), 401
         
-        # ✅ SET SESSION (YEH IMPORTANT HAI)
-        session.clear()  # Clear any old session first
+        # Check if already completed exam
+        existing_result = collections['results'].find_one({"student_id": user['_id']})
+        if existing_result:
+            print(f"⚠️ User already completed exam: {roll_number}")
+            return jsonify({"error": "You have already completed the exam"}), 403
+        
+        # ✅ SET SESSION
+        session.clear()
         session['user_id'] = str(user['_id'])
         session['roll_number'] = user['roll_number']
         session['name'] = user['name']
-        session['role'] = user['role']
+        session['role'] = 'student'
         session['logged_in'] = True
-        session.permanent = True  # Make session permanent
+        session.modified = True  # Force session save
         
-        print(f"✅ Login successful: {roll_number} (Session ID: {session.get('user_id')})")
+        print(f"✅ Login successful: {roll_number}")
+        print(f"   Session ID: {session.get('user_id')}")
         
         return jsonify({
             "message": "Login successful",
-            "role": user['role'],
             "name": user['name'],
             "roll_number": user['roll_number']
         })
     
     except Exception as e:
         print(f"❌ Login error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
-# ✅ FIXED ADMIN LOGIN
+
 @app.route('/api/admin_login', methods=['POST'])
 def admin_login_api():
     try:
@@ -397,14 +410,14 @@ def admin_login_api():
         
         print(f"🔐 Admin login attempt: {username}")
         
-        # Default admin credentials (CHANGE IN PRODUCTION!)
+        # Default admin credentials
         if username == 'admin' and password == 'admin123':
             session.clear()
             session['user_id'] = 'admin'
             session['role'] = 'admin'
             session['name'] = 'Administrator'
             session['logged_in'] = True
-            session.permanent = True
+            session.modified = True
             
             print("✅ Admin login successful")
             return jsonify({"message": "Admin login successful"})
@@ -414,6 +427,8 @@ def admin_login_api():
     
     except Exception as e:
         print(f"❌ Admin login error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
 # ✅ CHECK SESSION (DEBUG ENDPOINT)
@@ -428,27 +443,45 @@ def check_session():
         "logged_in": session.get('logged_in', False)
     })
 
-# ✅ EXAM PAGE (WITH SESSION CHECK)
 @app.route('/exam')
 def exam():
-    print(f"📄 Exam page accessed - Session: {session.get('user_id')}")
+    print(f"📄 Exam page request")
+    print(f"   Session user_id: {session.get('user_id')}")
+    print(f"   Session role: {session.get('role')}")
+    print(f"   Session logged_in: {session.get('logged_in')}")
     
-    if 'user_id' not in session or session.get('role') != 'student':
-        print("❌ Unauthorized exam access - redirecting to login")
-        return redirect(url_for('student_login'))
+    if not session.get('logged_in') or session.get('role') != 'student':
+        print("❌ Unauthorized - redirecting to login")
+        return redirect('/student_login')
     
-    return render_template('exam.html', name=session.get('name'))
+    return render_template('exam.html', 
+                         name=session.get('name'),
+                         roll_number=session.get('roll_number'))
 
-# ✅ ADMIN DASHBOARD (WITH SESSION CHECK)
+
 @app.route('/admin_dashboard')
 def admin_dashboard():
-    print(f"📊 Admin dashboard accessed - Session: {session.get('user_id')}")
+    print(f"📊 Admin dashboard request")
+    print(f"   Session user_id: {session.get('user_id')}")
+    print(f"   Session role: {session.get('role')}")
     
-    if 'user_id' not in session or session.get('role') != 'admin':
-        print("❌ Unauthorized admin access - redirecting to login")
-        return redirect(url_for('admin_login'))
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        print("❌ Unauthorized - redirecting to admin login")
+        return redirect('/admin_login')
     
     return render_template('admin_dashboard.html')
+
+@app.route('/api/debug/session')
+def debug_session():
+    return jsonify({
+        "session_data": dict(session),
+        "has_user_id": 'user_id' in session,
+        "user_id": session.get('user_id'),
+        "roll_number": session.get('roll_number'),
+        "name": session.get('name'),
+        "role": session.get('role'),
+        "logged_in": session.get('logged_in')
+    })
 
 # ✅ START EXAM (WITH SESSION CHECK)
 @app.route('/api/start_exam', methods=['POST'])
