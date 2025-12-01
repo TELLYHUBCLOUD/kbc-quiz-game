@@ -38,22 +38,13 @@ db = client.olevel_exam
 # Session Configuration - Use filesystem if MongoDB session fails
 # FIXED: Use static secret key for dev to prevent session invalidation on restart
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key_fixed_12345')
-app.config['SESSION_TYPE'] = 'filesystem'  # Changed to filesystem for reliability
-app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-# Use temp directory for sessions to avoid read-only file system errors
-app.config['SESSION_FILE_DIR'] = os.path.join(tempfile.gettempdir(), 'flask_session')
-app.config['SESSION_USE_SIGNER'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 
-# Create session directory if it doesn't exist
-os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
-
-# Initialize Flask-Session
-from flask_session import Session
-Session(app)
+# NOTE: Removed Flask-Session (filesystem) to support serverless/Vercel environments.
+# Default Flask sessions use signed cookies which persist on the client side.
 
 def get_collections():
     """Get database collections with connection check"""
