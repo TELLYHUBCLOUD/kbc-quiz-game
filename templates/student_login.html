@@ -5,308 +5,296 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Login - O Level Exam</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        
-        .container {
-            background: white;
+
+        .container { max-width: 500px; width: 100%; }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
             padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
-        
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         h2 {
             text-align: center;
             color: #333;
             margin-bottom: 30px;
         }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
+
+        .form-group { margin-bottom: 20px; }
+
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             color: #555;
             font-weight: 500;
         }
-        
+
         input {
             width: 100%;
             padding: 12px;
-            border: 2px solid #ddd;
+            border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s;
         }
-        
+
         input:focus {
             outline: none;
             border-color: #667eea;
         }
-        
-        button {
+
+        .btn {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
             transition: transform 0.2s;
         }
+
+        .btn:hover { transform: translateY(-2px); }
         
-        button:hover {
-            transform: translateY(-2px);
-        }
-        
-        button:disabled {
+        .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
-        
-        .message {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        
-        .error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
-        
-        .success {
-            background: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
-        }
-        
-        .tabs {
-            display: flex;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            color: #888;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        
-        .tab.active {
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-        }
-        
-        .form-container {
-            display: none;
-        }
-        
-        .form-container.active {
-            display: block;
-        }
-        
-        .link {
+
+        .back-link {
             text-align: center;
             margin-top: 20px;
-            color: #667eea;
         }
-        
-        .link a {
+
+        .back-link a {
             color: #667eea;
             text-decoration: none;
-            font-weight: 600;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+
+        .message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>🎓 Student Portal</h2>
-        
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('login')">Login</div>
-            <div class="tab" onclick="switchTab('register')">Register</div>
-        </div>
-        
-        <div id="message" class="message"></div>
-        
-        <!-- LOGIN FORM -->
-        <div id="loginForm" class="form-container active">
-            <form onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label>Roll Number</label>
-                    <input type="text" id="loginRoll" required autocomplete="username">
-                </div>
-                
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" required autocomplete="current-password">
-                </div>
-                
-                <button type="submit" id="loginBtn">Login</button>
-            </form>
-        </div>
-        
-        <!-- REGISTER FORM -->
-        <div id="registerForm" class="form-container">
-            <form onsubmit="handleRegister(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" id="registerName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Roll Number</label>
-                    <input type="text" id="registerRoll" required autocomplete="username">
-                </div>
-                
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="registerPassword" required autocomplete="new-password" minlength="6">
-                </div>
-                
-                <button type="submit" id="registerBtn">Register</button>
-            </form>
-        </div>
-        
-        <div class="link">
-            <a href="/">← Back to Home</a>
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('login')">Login</div>
+                <div class="tab" onclick="showTab('register')">Register</div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginTab" class="tab-content active">
+                <h2>Student Login</h2>
+                <div id="loginMessage" class="message"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Roll Number</label>
+                        <input type="text" name="roll_number" required placeholder="Enter your roll number">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn" id="loginBtn">Login</button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerTab" class="tab-content">
+                <h2>Student Registration</h2>
+                <div id="registerMessage" class="message"></div>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="name" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Roll Number</label>
+                        <input type="text" name="roll_number" required placeholder="Enter your roll number">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required placeholder="Create a password">
+                    </div>
+                    <button type="submit" class="btn" id="registerBtn">Register</button>
+                </form>
+            </div>
+
+            <div class="back-link">
+                <a href="/">← Back to Home</a>
+            </div>
         </div>
     </div>
-    
+
     <script>
-        function switchTab(tab) {
-            // Switch tabs
+        function showTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Hide all messages
+            document.querySelectorAll('.message').forEach(m => m.style.display = 'none');
             
             if (tab === 'login') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('loginForm').classList.add('active');
+                document.querySelector('.tab:first-child').classList.add('active');
+                document.getElementById('loginTab').classList.add('active');
             } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('registerForm').classList.add('active');
+                document.querySelector('.tab:last-child').classList.add('active');
+                document.getElementById('registerTab').classList.add('active');
             }
-            
-            // Clear message
-            document.getElementById('message').style.display = 'none';
         }
-        
-        function showMessage(text, type) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.className = `message ${type}`;
-            msg.style.display = 'block';
+
+        function showMessage(elementId, message, isError = true) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = isError ? 'message error' : 'message success';
+            el.style.display = 'block';
         }
-        
-        async function handleLogin(e) {
+
+        // Registration Form
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const roll = document.getElementById('loginRoll').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const btn = document.getElementById('loginBtn');
-            
-            if (!roll || !password) {
-                showMessage('Please fill all fields', 'error');
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.textContent = 'Logging in...';
-            
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ roll_number: roll, password: password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage('Login successful! Redirecting...', 'success');
-                    setTimeout(() => window.location.href = '/exam', 1000);
-                } else {
-                    showMessage(data.error || 'Login failed', 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Login';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showMessage('Connection error. Please try again.', 'error');
-                btn.disabled = false;
-                btn.textContent = 'Login';
-            }
-        }
-        
-        async function handleRegister(e) {
-            e.preventDefault();
-            
-            const name = document.getElementById('registerName').value.trim();
-            const roll = document.getElementById('registerRoll').value.trim();
-            const password = document.getElementById('registerPassword').value;
             const btn = document.getElementById('registerBtn');
-            
-            if (!name || !roll || !password) {
-                showMessage('Please fill all fields', 'error');
-                return;
-            }
-            
-            if (password.length < 6) {
-                showMessage('Password must be at least 6 characters', 'error');
-                return;
-            }
-            
             btn.disabled = true;
             btn.textContent = 'Registering...';
             
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name').trim(),
+                roll_number: formData.get('roll_number').trim(),
+                password: formData.get('password')
+            };
+
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, roll_number: roll, password: password })
+                    credentials: 'include',
+                    body: JSON.stringify(data)
                 });
-                
-                const data = await response.json();
-                
+
+                const result = await response.json();
+
                 if (response.ok) {
-                    showMessage('Registration successful! Please login.', 'success');
-                    setTimeout(() => switchTab('login'), 1500);
+                    showMessage('registerMessage', 'Registration successful! Please login.', false);
+                    e.target.reset();
+                    setTimeout(() => showTab('login'), 2000);
                 } else {
-                    showMessage(data.error || 'Registration failed', 'error');
+                    showMessage('registerMessage', result.error || 'Registration failed', true);
                 }
             } catch (error) {
-                console.error('Register error:', error);
-                showMessage('Connection error. Please try again.', 'error');
+                console.error('Registration error:', error);
+                showMessage('registerMessage', 'Registration failed. Please try again.', true);
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Register';
             }
-        }
+        });
+
+        // Login Form - FIXED
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+            
+            const formData = new FormData(e.target);
+            const data = {
+                roll_number: formData.get('roll_number').trim(),
+                password: formData.get('password')
+            };
+
+            console.log('🔑 Attempting login:', data.roll_number);
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // CRITICAL: Include cookies for session
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                console.log('📥 Login response:', result);
+
+                if (response.ok) {
+                    showMessage('loginMessage', 'Login successful! Redirecting...', false);
+                    setTimeout(() => {
+                        window.location.href = '/exam';
+                    }, 1000);
+                } else {
+                    showMessage('loginMessage', result.error || 'Login failed', true);
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                }
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                showMessage('loginMessage', 'Login failed. Please check your connection.', true);
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
+        });
     </script>
 </body>
 </html>
