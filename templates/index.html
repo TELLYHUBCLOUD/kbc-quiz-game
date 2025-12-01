@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -131,20 +132,32 @@
         }
 
         @media (max-width: 768px) {
-            h1 { font-size: 32px; }
-            .subtitle { font-size: 16px; }
-            .info-grid { grid-template-columns: 1fr; }
-            .card { padding: 40px 20px; }
+            h1 {
+                font-size: 32px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 40px 20px;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="card">
             <div class="logo">🎓</div>
             <h1>O Level Exam System</h1>
             <p class="subtitle">Computer Fundamentals & Programming Examination Portal</p>
-            
+
             <div class="info-grid">
                 <div class="info-card">
                     <div class="info-icon">📚</div>
@@ -175,9 +188,12 @@
 
             <div class="button-group">
                 <a href="/student_login" class="btn btn-primary">👨‍🎓 Student Login</a>
-                <a href="/admin_login" class="btn btn-secondary">👨‍💼 Admin Login</a>
+                <a href="/check_result" class="btn btn-secondary">📊 View Result</a>
+                <a href="/admin_login" class="btn btn-secondary"
+                    style="background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);">👨‍💼 Admin Login</a>
             </div>
         </div>
     </div>
 </body>
+
 </html>
