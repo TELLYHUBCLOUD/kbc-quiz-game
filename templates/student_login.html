@@ -10,274 +10,303 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 20px;
+            align-items: center;
         }
-
+        
         .container {
-            max-width: 500px;
-            width: 100%;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
+            background: white;
             padding: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 400px;
         }
-
-        .tabs {
-            display: flex;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            font-weight: bold;
-            color: #666;
-            transition: all 0.3s;
-        }
-
-        .tab.active {
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
+        
         h2 {
             text-align: center;
             color: #333;
             margin-bottom: 30px;
         }
-
+        
         .form-group {
             margin-bottom: 20px;
         }
-
+        
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             color: #555;
             font-weight: 500;
         }
-
+        
         input {
             width: 100%;
             padding: 12px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s;
         }
-
+        
         input:focus {
             outline: none;
             border-color: #667eea;
         }
-
-        .btn {
+        
+        button {
             width: 100%;
-            padding: 15px;
+            padding: 12px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            margin-top: 10px;
             transition: transform 0.2s;
         }
-
-        .btn:hover {
+        
+        button:hover {
             transform: translateY(-2px);
         }
-
-        .back-link {
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        
+        .success {
+            background: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            color: #888;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .form-container {
+            display: none;
+        }
+        
+        .form-container.active {
+            display: block;
+        }
+        
+        .link {
             text-align: center;
             margin-top: 20px;
+            color: #667eea;
         }
-
-        .back-link a {
+        
+        .link a {
             color: #667eea;
             text-decoration: none;
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <div class="tabs">
-                <div class="tab active" onclick="showTab('login')">Login</div>
-                <div class="tab" onclick="showTab('register')">Register</div>
-            </div>
-
-            <!-- Login Form -->
-            <div id="loginTab" class="tab-content active">
-                <h2>Student Login</h2>
-                <div id="loginError" class="error"></div>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn">Login</button>
-                </form>
-            </div>
-
-            <!-- Register Form -->
-            <div id="registerTab" class="tab-content">
-                <h2>Student Registration</h2>
-                <div id="registerError" class="error"></div>
-                <div id="registerSuccess" class="success"></div>
-                <form id="registerForm">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Roll Number</label>
-                        <input type="text" name="roll_number" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn">Register</button>
-                </form>
-            </div>
-
-            <div class="back-link">
-                <a href="/">← Back to Home</a>
-            </div>
+        <h2>🎓 Student Portal</h2>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">Login</div>
+            <div class="tab" onclick="switchTab('register')">Register</div>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
+        <!-- LOGIN FORM -->
+        <div id="loginForm" class="form-container active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="text" id="loginRoll" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="loginBtn">Login</button>
+            </form>
+        </div>
+        
+        <!-- REGISTER FORM -->
+        <div id="registerForm" class="form-container">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="text" id="registerRoll" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="registerPassword" required autocomplete="new-password" minlength="6">
+                </div>
+                
+                <button type="submit" id="registerBtn">Register</button>
+            </form>
+        </div>
+        
+        <div class="link">
+            <a href="/">← Back to Home</a>
         </div>
     </div>
-
+    
     <script>
-        function showTab(tab) {
+        function switchTab(tab) {
+            // Switch tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.form-container').forEach(f => f.classList.remove('active'));
             
             if (tab === 'login') {
-                document.querySelector('.tab:first-child').classList.add('active');
-                document.getElementById('loginTab').classList.add('active');
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
             } else {
-                document.querySelector('.tab:last-child').classList.add('active');
-                document.getElementById('registerTab').classList.add('active');
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+            
+            // Clear message
+            document.getElementById('message').style.display = 'none';
+        }
+        
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+            msg.style.display = 'block';
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const roll = document.getElementById('loginRoll').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+            
+            if (!roll || !password) {
+                showMessage('Please fill all fields', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roll_number: roll, password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Login successful! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = '/exam', 1000);
+                } else {
+                    showMessage(data.error || 'Login failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showMessage('Connection error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Login';
             }
         }
-
-        // Login Form
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        
+        async function handleRegister(e) {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-
+            
+            const name = document.getElementById('registerName').value.trim();
+            const roll = document.getElementById('registerRoll').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const btn = document.getElementById('registerBtn');
+            
+            if (!name || !roll || !password) {
+                showMessage('Please fill all fields', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showMessage('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Registering...';
+            
             try {
-                const response = await fetch('/student_login', {
+                const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify({ name: name, roll_number: roll, password: password })
                 });
-
-                const result = await response.json();
-
+                
+                const data = await response.json();
+                
                 if (response.ok) {
-                    window.location.href = '/student/dashboard';
+                    showMessage('Registration successful! Please login.', 'success');
+                    setTimeout(() => switchTab('login'), 1500);
                 } else {
-                    document.getElementById('loginError').textContent = result.message;
-                    document.getElementById('loginError').style.display = 'block';
+                    showMessage(data.error || 'Registration failed', 'error');
                 }
             } catch (error) {
-                document.getElementById('loginError').textContent = 'Login failed. Please try again.';
-                document.getElementById('loginError').style.display = 'block';
+                console.error('Register error:', error);
+                showMessage('Connection error. Please try again.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Register';
             }
-        });
-
-        // Register Form
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-
-            try {
-                const response = await fetch('/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    document.getElementById('registerSuccess').textContent = 'Registration successful! Please login.';
-                    document.getElementById('registerSuccess').style.display = 'block';
-                    document.getElementById('registerError').style.display = 'none';
-                    e.target.reset();
-                    setTimeout(() => showTab('login'), 2000);
-                } else {
-                    document.getElementById('registerError').textContent = result.message;
-                    document.getElementById('registerError').style.display = 'block';
-                    document.getElementById('registerSuccess').style.display = 'none';
-                }
-            } catch (error) {
-                document.getElementById('registerError').textContent = 'Registration failed. Please try again.';
-                document.getElementById('registerError').style.display = 'block';
-            }
-        });
+        }
     </script>
 </body>
 </html>
