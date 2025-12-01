@@ -603,6 +603,18 @@ def admin_dashboard():
     
     return render_template('admin_dashboard.html')
 
+# ✅ ADMIN RESULTS PAGE
+@app.route('/admin/all_results')
+def admin_all_results():
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return redirect('/admin_login')
+    
+    # Check demo mode
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+    
+    return render_template('admin_results.html', demo_mode=use_demo_mode)
+
 # ✅ DEBUG SESSION
 @app.route('/api/debug/session')
 def debug_session():
@@ -955,13 +967,19 @@ def submit_exam():
 # ✅ GET RESULTS
 @app.route('/api/results')
 def get_results():
-    collections = get_collections()
-    
     if not session.get('logged_in'):
         return jsonify({"error": "Unauthorized"}), 401
     
-    if not collections:
-        return jsonify({"error": "Database not available"}), 500
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+    
+    # Demo Mode: No persistent results
+    if use_demo_mode:
+        return jsonify({
+            "demo_mode": True,
+            "message": "Demo Mode: Results are not persisted. Connect a real MongoDB database to store and view results.",
+            "results": []
+        })
     
     try:
         if session.get('role') == 'admin':
@@ -996,6 +1014,53 @@ def get_results():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+# ✅ GET ALL RESULTS (ADMIN) - Alias for compatibility
+@app.route('/api/all_results')
+def get_all_results():
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+    
+    # Demo Mode: Return formatted response
+    if use_demo_mode:
+        return jsonify({
+            "demo_mode": True,
+            "message": "Demo Mode: Results are not persisted. Connect a real MongoDB database to store and view results.",
+            "results": []
+        })
+    
+    # Real DB: Return results
+    try:
+        results = list(collections['results'].find().sort("submitted_at", -1))
+        
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                'student_name': result.get('name', 'N/A'),
+                'roll_number': result.get('roll_number', 'N/A'),
+                'total_questions': result.get('total', 0),
+                'correct_answers': result.get('score', 0),
+                'percentage': result.get('percentage', 0),
+                'grade': calculate_grade(result.get('percentage', 0)),
+                'submitted_at': result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S") if result.get('submitted_at') else 'N/A'
+            })
+        
+        return jsonify({"results": formatted_results})
+    except Exception as e:
+        print(f"❌ Get all results error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+def calculate_grade(percentage):
+    """Calculate letter grade from percentage"""
+    if percentage >= 90: return "A+"
+    elif percentage >= 80: return "A"
+    elif percentage >= 70: return "B"
+    elif percentage >= 60: return "C"
+    elif percentage >= 50: return "D"
+    else: return "F"
 
 # ✅ GET ALL STUDENTS (ADMIN)
 @app.route('/api/admin/students')
