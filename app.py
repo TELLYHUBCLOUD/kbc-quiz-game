@@ -307,6 +307,31 @@ QUESTIONS_DATA = {
 
 # =================== HELPER FUNCTIONS ===================
 
+def init_db():
+    """Initialize database with questions if empty"""
+    try:
+        if db is not None:
+            # Check if questions exist
+            count = db.questions.count_documents({})
+            if count == 0:
+                print("⚠️ Database empty. Seeding questions...")
+                questions_to_insert = []
+                for category, questions in QUESTIONS_DATA.items():
+                    for q in questions:
+                        q['category'] = category
+                        questions_to_insert.append(q)
+                
+                if questions_to_insert:
+                    db.questions.insert_many(questions_to_insert)
+                    print(f"✅ Seeded {len(questions_to_insert)} questions into database.")
+            else:
+                print(f"✅ Database already contains {count} questions.")
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+
+# Initialize DB on startup
+init_db()
+
 def login_required(f):
     """Decorator to check if user is logged in"""
     from functools import wraps
