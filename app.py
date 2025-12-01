@@ -382,6 +382,61 @@ def admin_login():
     session.clear()
     return render_template('admin_login.html')
 
+# ✅ CHECK RESULT PAGE
+@app.route('/check_result')
+def check_result_page():
+    return render_template('check_result.html')
+
+# ✅ VIEW RESULT PAGE (Guest)
+@app.route('/view_result')
+def view_result_page():
+    return render_template('view_result.html')
+
+# ✅ CHECK RESULT API
+@app.route('/api/check_result', methods=['POST'])
+def check_result_api():
+    try:
+        data = request.json
+        roll_number = data.get('roll_number', '').strip()
+        
+        if not roll_number:
+            return jsonify({"error": "Roll number is required"}), 400
+        
+        collections = get_collections()
+        use_demo_mode = IS_MOCK_DB or (collections is None)
+        
+        # Demo Mode: Check session storage (limited)
+        if use_demo_mode:
+            # In demo mode, we can't search by roll number across sessions
+            # Return a message
+            return jsonify({
+                "error": "Result checking by roll number is only available with a real database. Please login to view your result."
+            }), 404
+        
+        # Real DB: Search by roll number
+        result = collections['results'].find_one({"roll_number": roll_number})
+        
+        if not result:
+            return jsonify({"error": "No result found for this roll number"}), 404
+        
+        return jsonify({
+            "success": True,
+            "result": {
+                "student_name": result.get('name', 'N/A'),
+                "roll_number": result.get('roll_number', 'N/A'),
+                "score": result.get('score', 0),
+                "total": result.get('total', 0),
+                "percentage": result.get('percentage', 0),
+                "passed": result.get('passed', False),
+                "grade": calculate_grade(result.get('percentage', 0)),
+                "category_scores": result.get('category_scores', {}),
+                "submitted_at": result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S") if result.get('submitted_at') else 'N/A'
+            }
+        })
+    except Exception as e:
+        print(f"❌ Check result error: {str(e)}")
+        return jsonify({"error": "Failed to fetch result"}), 500
+
 # ✅ FIXED REGISTRATION
 @app.route('/api/register', methods=['POST'])
 def register():
