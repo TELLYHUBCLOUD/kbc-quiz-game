@@ -35,7 +35,9 @@ except Exception as e:
 db = client.olevel_exam
 
 # Session Configuration - Use filesystem if MongoDB session fails
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+# Session Configuration - Use filesystem if MongoDB session fails
+# FIXED: Use static secret key for dev to prevent session invalidation on restart
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_secret_key_fixed_12345')
 app.config['SESSION_TYPE'] = 'filesystem'  # Changed to filesystem for reliability
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
