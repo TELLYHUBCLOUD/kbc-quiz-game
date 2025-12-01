@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import secrets
@@ -11,41 +10,54 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 
-# CRITICAL: Session Configuration
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-app.config['SESSION_TYPE'] = 'mongodb'
-app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
-app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_MONGODB'] = None  # Will be set after MongoDB connects
-
-# MongoDB Configuration
+# MongoDB Configuration - Connect FIRST
 MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
+
+client = None
+db = None
 
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client.olevel_exam
     client.server_info()
-    
-    # Set MongoDB for session storage
-    app.config['SESSION_MONGODB'] = client
-    app.config['SESSION_MONGODB_DB'] = 'olevel_exam'
-    app.config['SESSION_MONGODB_COLLECT'] = 'sessions'
-    
     print("✅ MongoDB connected successfully!")
 except Exception as e:
     print(f"❌ MongoDB connection error: {e}")
     db = None
+
+# Session Configuration - Use filesystem if MongoDB session fails
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['SESSION_TYPE'] = 'filesystem'  # Changed to filesystem for reliability
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
+app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+app.config['SESSION_USE_SIGNER'] = True
+
+# Create session directory if it doesn't exist
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+
+# Initialize Flask-Session
+from flask_session import Session
+Session(app)
+
 def get_collections():
+    """Get database collections with connection check"""
     if db is not None:
-        return {
-            'users': db.users,
-            'questions': db.questions,
-            'exams': db.exams,
-            'results': db.results
-        }
+        try:
+            # Test connection
+            client.admin.command('ping')
+            return {
+                'users': db.users,
+                'questions': db.questions,
+                'exams': db.exams,
+                'results': db.results
+            }
+        except Exception as e:
+            print(f"❌ Database connection lost: {e}")
+            return None
     return None
 
 # =================== COMPLETE QUESTIONS DATABASE - 200 QUESTIONS ===================
@@ -206,7 +218,7 @@ QUESTIONS_DATA = {
         {"q": "What is fog computing?", "options": ["Cloud computing", "Decentralized computing", "Wireless technology", "Database"], "answer": 1, "difficulty": "intermediate"},
         {"q": "Which sensor is used for gas detection?", "options": ["MQ series", "DHT11", "PIR", "LDR"], "answer": 0, "difficulty": "intermediate"},
         
-        # Advanced Level (36-50) - COMPLETED
+        # Advanced Level (36-50)
         {"q": "What is MQTT QoS level 2?", "options": ["At most once", "At least once", "Exactly once", "Never"], "answer": 2, "difficulty": "advanced"},
         {"q": "Which protocol is best for constrained devices?", "options": ["HTTP", "MQTT", "CoAP", "WebSocket"], "answer": 2, "difficulty": "advanced"},
         {"q": "What is Digital Twin in IoT?", "options": ["Backup system", "Virtual replica of physical device", "Clone device", "Mirror network"], "answer": 1, "difficulty": "advanced"},
@@ -225,7 +237,7 @@ QUESTIONS_DATA = {
     ],
     
     "fundamentals": [
-        # Basic Level (1-15) - COMPLETED
+        # Basic Level (1-15)
         {"q": "What is a computer?", "options": ["Electronic device", "Mechanical device", "Chemical device", "Biological device"], "answer": 0, "difficulty": "basic"},
         {"q": "Which is an input device?", "options": ["Monitor", "Printer", "Keyboard", "Speaker"], "answer": 2, "difficulty": "basic"},
         {"q": "What does CPU stand for?", "options": ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Computer Processing Utility"], "answer": 0, "difficulty": "basic"},
@@ -242,7 +254,7 @@ QUESTIONS_DATA = {
         {"q": "Which is an example of system software?", "options": ["MS Word", "Windows", "Chrome", "Photoshop"], "answer": 1, "difficulty": "basic"},
         {"q": "What does GUI stand for?", "options": ["Graphical User Interface", "General User Interface", "Graphics Utility Interface", "Global User Integration"], "answer": 0, "difficulty": "basic"},
         
-        # Intermediate Level (16-35) - COMPLETED
+        # Intermediate Level (16-35)
         {"q": "What is cache memory?", "options": ["Permanent storage", "High-speed temporary storage", "Input device", "Output device"], "answer": 1, "difficulty": "intermediate"},
         {"q": "Which number system does computer use?", "options": ["Decimal", "Binary", "Octal", "Hexadecimal"], "answer": 1, "difficulty": "intermediate"},
         {"q": "What is 1 MB equal to?", "options": ["1000 KB", "1024 KB", "1000 GB", "1024 GB"], "answer": 1, "difficulty": "intermediate"},
@@ -264,7 +276,7 @@ QUESTIONS_DATA = {
         {"q": "What is a cookie in web browsing?", "options": ["Virus", "Small data file", "Browser", "Website"], "answer": 1, "difficulty": "intermediate"},
         {"q": "Which file system does Windows use?", "options": ["ext4", "NTFS", "HFS+", "APFS"], "answer": 1, "difficulty": "intermediate"},
         
-        # Advanced Level (36-50) - COMPLETED
+        # Advanced Level (36-50)
         {"q": "What is the von Neumann architecture?", "options": ["GPU design", "Stored program concept", "Network architecture", "Database model"], "answer": 1, "difficulty": "advanced"},
         {"q": "Which sorting algorithm has best average case?", "options": ["Bubble Sort", "Quick Sort", "Selection Sort", "Insertion Sort"], "answer": 1, "difficulty": "advanced"},
         {"q": "What is Big-O notation?", "options": ["Memory usage", "Algorithm complexity", "Data type", "Programming syntax"], "answer": 1, "difficulty": "advanced"},
@@ -282,6 +294,32 @@ QUESTIONS_DATA = {
         {"q": "What is a hash collision?", "options": ["Memory error", "Two inputs same hash", "Network error", "Disk failure"], "answer": 1, "difficulty": "advanced"}
     ]
 }
+
+# =================== HELPER FUNCTIONS ===================
+
+def login_required(f):
+    """Decorator to check if user is logged in"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.is_json:
+                return jsonify({"error": "Unauthorized. Please login."}), 401
+            return redirect(url_for('student_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    """Decorator to check if user is admin"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in') or session.get('role') != 'admin':
+            if request.is_json:
+                return jsonify({"error": "Admin access required"}), 403
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # =================== ROUTES ===================
 
@@ -305,33 +343,44 @@ def admin_login():
 def register():
     collections = get_collections()
     if not collections:
-        return jsonify({"error": "Database not available"}), 500
+        return jsonify({"error": "Database not available. Please try again later."}), 500
     
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
         print(f"📝 Registration attempt: {data.get('roll_number')}")
         
         # Validate input
-        if not data.get('name') or not data.get('roll_number') or not data.get('password'):
+        name = data.get('name', '').strip()
+        roll_number = data.get('roll_number', '').strip()
+        password = data.get('password', '')
+        
+        if not name or not roll_number or not password:
             return jsonify({"error": "All fields are required"}), 400
         
+        if len(password) < 4:
+            return jsonify({"error": "Password must be at least 4 characters"}), 400
+        
         # Check if user exists
-        existing_user = collections['users'].find_one({"roll_number": data['roll_number']})
+        existing_user = collections['users'].find_one({"roll_number": roll_number})
         if existing_user:
-            print(f"❌ Roll number already exists: {data['roll_number']}")
+            print(f"❌ Roll number already exists: {roll_number}")
             return jsonify({"error": "Roll number already registered"}), 400
         
         # Create user
         user_data = {
-            "name": data['name'],
-            "roll_number": data['roll_number'],
-            "password": generate_password_hash(data['password'], method='pbkdf2:sha256'),
+            "name": name,
+            "roll_number": roll_number,
+            "password": generate_password_hash(password, method='pbkdf2:sha256'),
             "role": "student",
             "registered_at": datetime.now()
         }
         
-        user_id = collections['users'].insert_one(user_data).inserted_id
-        print(f"✅ User registered: {data['roll_number']} (ID: {user_id})")
+        result = collections['users'].insert_one(user_data)
+        user_id = result.inserted_id
+        print(f"✅ User registered: {roll_number} (ID: {user_id})")
         
         return jsonify({
             "message": "Registration successful! Please login.",
@@ -340,16 +389,22 @@ def register():
     
     except Exception as e:
         print(f"❌ Registration error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
+# ✅ FIXED LOGIN
 @app.route('/api/login', methods=['POST'])
 def login():
     collections = get_collections()
     if not collections:
-        return jsonify({"error": "Database not available"}), 500
+        return jsonify({"error": "Database not available. Please try again later."}), 500
     
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
         roll_number = data.get('roll_number', '').strip()
         password = data.get('password', '')
         
@@ -376,17 +431,18 @@ def login():
             print(f"⚠️ User already completed exam: {roll_number}")
             return jsonify({"error": "You have already completed the exam"}), 403
         
-        # ✅ SET SESSION
+        # ✅ CLEAR OLD SESSION AND SET NEW ONE
         session.clear()
         session['user_id'] = str(user['_id'])
         session['roll_number'] = user['roll_number']
         session['name'] = user['name']
         session['role'] = 'student'
         session['logged_in'] = True
-        session.modified = True  # Force session save
+        session.permanent = True
         
         print(f"✅ Login successful: {roll_number}")
         print(f"   Session ID: {session.get('user_id')}")
+        print(f"   Session logged_in: {session.get('logged_in')}")
         
         return jsonify({
             "message": "Login successful",
@@ -400,24 +456,30 @@ def login():
         traceback.print_exc()
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
-
+# ✅ FIXED ADMIN LOGIN
 @app.route('/api/admin_login', methods=['POST'])
 def admin_login_api():
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
         username = data.get('username', '').strip()
         password = data.get('password', '')
         
         print(f"🔐 Admin login attempt: {username}")
         
-        # Default admin credentials
-        if username == 'admin' and password == 'admin123':
+        # Default admin credentials (change in production!)
+        ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+        ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session.clear()
             session['user_id'] = 'admin'
             session['role'] = 'admin'
             session['name'] = 'Administrator'
             session['logged_in'] = True
-            session.modified = True
+            session.permanent = True
             
             print("✅ Admin login successful")
             return jsonify({"message": "Admin login successful"})
@@ -433,7 +495,7 @@ def admin_login_api():
 
 # ✅ CHECK SESSION (DEBUG ENDPOINT)
 @app.route('/api/check_session')
-def check_session():
+def check_session_api():
     return jsonify({
         "session_exists": 'user_id' in session,
         "user_id": session.get('user_id'),
@@ -443,6 +505,7 @@ def check_session():
         "logged_in": session.get('logged_in', False)
     })
 
+# ✅ EXAM PAGE
 @app.route('/exam')
 def exam():
     print(f"📄 Exam page request")
@@ -458,7 +521,7 @@ def exam():
                          name=session.get('name'),
                          roll_number=session.get('roll_number'))
 
-
+# ✅ ADMIN DASHBOARD
 @app.route('/admin_dashboard')
 def admin_dashboard():
     print(f"📊 Admin dashboard request")
@@ -471,6 +534,7 @@ def admin_dashboard():
     
     return render_template('admin_dashboard.html')
 
+# ✅ DEBUG SESSION
 @app.route('/api/debug/session')
 def debug_session():
     return jsonify({
@@ -483,24 +547,55 @@ def debug_session():
         "logged_in": session.get('logged_in')
     })
 
-# ✅ START EXAM (WITH SESSION CHECK)
+# ✅ START EXAM
 @app.route('/api/start_exam', methods=['POST'])
 def start_exam():
     collections = get_collections()
     
-    if 'user_id' not in session or not collections:
+    if not session.get('logged_in') or session.get('role') != 'student':
         print(f"❌ Unauthorized exam start attempt")
         return jsonify({"error": "Unauthorized. Please login again."}), 401
     
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
+    
     try:
+        user_id = session.get('user_id')
+        
         # Check if user already has an ongoing exam
         existing_exam = collections['exams'].find_one({
-            "student_id": ObjectId(session['user_id']),
+            "student_id": ObjectId(user_id),
             "status": "in_progress"
         })
         
         if existing_exam:
-            return jsonify({"error": "You already have an ongoing exam"}), 400
+            # Return existing exam questions
+            exam_questions = []
+            for q_id in existing_exam['questions']:
+                q = collections['questions'].find_one({"_id": ObjectId(q_id)})
+                if q:
+                    exam_questions.append(q)
+            
+            session['exam_id'] = str(existing_exam['_id'])
+            
+            questions_data = []
+            for i, q in enumerate(exam_questions):
+                questions_data.append({
+                    "id": str(q['_id']),
+                    "number": i + 1,
+                    "category": q['category'],
+                    "question": q['question'],
+                    "options": q['options'],
+                    "difficulty": q.get('difficulty', 'basic')
+                })
+            
+            print(f"📋 Returning existing exam for {session.get('roll_number')}")
+            return jsonify({"questions": questions_data, "resumed": True})
+        
+        # Check if already completed
+        existing_result = collections['results'].find_one({"student_id": ObjectId(user_id)})
+        if existing_result:
+            return jsonify({"error": "You have already completed the exam"}), 400
         
         # RANDOMIZE: Get random 25 questions from each category (total 100)
         exam_questions = []
@@ -518,15 +613,18 @@ def start_exam():
         random.shuffle(exam_questions)
         
         # Create exam session
-        exam_id = collections['exams'].insert_one({
-            "student_id": ObjectId(session['user_id']),
+        exam_doc = {
+            "student_id": ObjectId(user_id),
             "roll_number": session.get('roll_number'),
             "name": session.get('name'),
             "status": "in_progress",
             "started_at": datetime.now(),
             "questions": [str(q['_id']) for q in exam_questions],
             "randomized": True
-        }).inserted_id
+        }
+        
+        result = collections['exams'].insert_one(exam_doc)
+        exam_id = result.inserted_id
         
         session['exam_id'] = str(exam_id)
         
@@ -544,35 +642,54 @@ def start_exam():
         
         print(f"✅ Exam started for {session.get('roll_number')} - {len(questions_data)} questions")
         
-        return jsonify({"questions": questions_data})
+        return jsonify({"questions": questions_data, "resumed": False})
     
     except Exception as e:
         print(f"❌ Start exam error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Failed to start exam: {str(e)}"}), 500
 
 # ✅ SUBMIT EXAM
 @app.route('/api/submit_exam', methods=['POST'])
 def submit_exam():
     collections = get_collections()
-    if 'user_id' not in session or 'exam_id' not in session or not collections:
+    
+    if not session.get('logged_in') or session.get('role') != 'student':
         return jsonify({"error": "Unauthorized"}), 401
+    
+    if not session.get('exam_id'):
+        return jsonify({"error": "No active exam found"}), 400
+    
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
     
     try:
         data = request.json
         answers = data.get('answers', {})
         
+        exam_id = session.get('exam_id')
+        user_id = session.get('user_id')
+        
         # Get exam data
-        exam = collections['exams'].find_one({"_id": ObjectId(session['exam_id'])})
+        exam = collections['exams'].find_one({"_id": ObjectId(exam_id)})
         if not exam:
             return jsonify({"error": "Exam not found"}), 404
+        
+        if exam['status'] == 'completed':
+            return jsonify({"error": "Exam already submitted"}), 400
         
         # Calculate score
         score = 0
         total_questions = len(exam['questions'])
-        category_scores = {"python": {"correct": 0, "total": 0}, 
-                           "web_design": {"correct": 0, "total": 0},
-                           "iot": {"correct": 0, "total": 0},
-                           "fundamentals": {"correct": 0, "total": 0}}
+        category_scores = {
+            "python": {"correct": 0, "total": 0}, 
+            "web_design": {"correct": 0, "total": 0},
+            "iot": {"correct": 0, "total": 0},
+            "fundamentals": {"correct": 0, "total": 0}
+        }
+        
+        detailed_results = []
         
         for q_id in exam['questions']:
             question = collections['questions'].find_one({"_id": ObjectId(q_id)})
@@ -581,56 +698,83 @@ def submit_exam():
                 category_scores[category]['total'] += 1
                 
                 user_answer = answers.get(q_id, -1)
-                if user_answer == question['answer']:
+                if isinstance(user_answer, str):
+                    try:
+                        user_answer = int(user_answer)
+                    except:
+                        user_answer = -1
+                
+                is_correct = (user_answer == question['answer'])
+                
+                if is_correct:
                     score += 1
                     category_scores[category]['correct'] += 1
+                
+                detailed_results.append({
+                    "question_id": q_id,
+                    "user_answer": user_answer,
+                    "correct_answer": question['answer'],
+                    "is_correct": is_correct
+                })
         
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
         
+        # Determine pass/fail (40% pass mark)
+        passed = percentage >= 40
+        
         # Save result
         result_data = {
-            "exam_id": ObjectId(session['exam_id']),
-            "student_id": ObjectId(session['user_id']),
+            "exam_id": ObjectId(exam_id),
+            "student_id": ObjectId(user_id),
             "roll_number": session.get('roll_number'),
             "name": session.get('name'),
             "score": score,
             "total": total_questions,
             "percentage": round(percentage, 2),
+            "passed": passed,
             "category_scores": category_scores,
             "submitted_at": datetime.now(),
-            "answers": answers
+            "answers": answers,
+            "detailed_results": detailed_results
         }
         
         collections['results'].insert_one(result_data)
         
         # Update exam status
         collections['exams'].update_one(
-            {"_id": ObjectId(session['exam_id'])},
+            {"_id": ObjectId(exam_id)},
             {"$set": {"status": "completed", "completed_at": datetime.now()}}
         )
         
-        print(f"✅ Exam submitted: {session.get('roll_number')} - Score: {score}/{total_questions}")
+        print(f"✅ Exam submitted: {session.get('roll_number')} - Score: {score}/{total_questions} ({percentage:.1f}%)")
         
-        # Clear exam session
+        # Clear exam session but keep user logged in
         session.pop('exam_id', None)
         
         return jsonify({
             "score": score,
             "total": total_questions,
             "percentage": round(percentage, 2),
+            "passed": passed,
             "category_scores": category_scores
         })
     
     except Exception as e:
         print(f"❌ Submit exam error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Failed to submit exam: {str(e)}"}), 500
 
 # ✅ GET RESULTS
 @app.route('/api/results')
 def get_results():
     collections = get_collections()
-    if 'user_id' not in session or not collections:
+    
+    if not session.get('logged_in'):
         return jsonify({"error": "Unauthorized"}), 401
+    
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
     
     try:
         if session.get('role') == 'admin':
@@ -640,23 +784,121 @@ def get_results():
                 "student_id": ObjectId(session['user_id'])
             }).sort("submitted_at", -1))
         
-        # Convert ObjectId to string
+        # Convert ObjectId to string for JSON serialization
+        formatted_results = []
         for result in results:
-            result['_id'] = str(result['_id'])
-            result['exam_id'] = str(result['exam_id'])
-            result['student_id'] = str(result['student_id'])
-            result['submitted_at'] = result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S")
+            formatted_result = {
+                '_id': str(result['_id']),
+                'exam_id': str(result['exam_id']),
+                'student_id': str(result['student_id']),
+                'roll_number': result.get('roll_number', 'N/A'),
+                'name': result.get('name', 'N/A'),
+                'score': result.get('score', 0),
+                'total': result.get('total', 0),
+                'percentage': result.get('percentage', 0),
+                'passed': result.get('passed', False),
+                'category_scores': result.get('category_scores', {}),
+                'submitted_at': result['submitted_at'].strftime("%Y-%m-%d %H:%M:%S") if result.get('submitted_at') else 'N/A'
+            }
+            formatted_results.append(formatted_result)
         
-        return jsonify(results)
+        return jsonify(formatted_results)
     
     except Exception as e:
         print(f"❌ Get results error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ✅ GET ALL STUDENTS (ADMIN)
+@app.route('/api/admin/students')
+def get_all_students():
+    collections = get_collections()
+    
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+    
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
+    
+    try:
+        students = list(collections['users'].find({"role": "student"}))
+        
+        formatted_students = []
+        for student in students:
+            # Check if student has completed exam
+            result = collections['results'].find_one({"student_id": student['_id']})
+            
+            formatted_student = {
+                '_id': str(student['_id']),
+                'name': student.get('name', 'N/A'),
+                'roll_number': student.get('roll_number', 'N/A'),
+                'registered_at': student['registered_at'].strftime("%Y-%m-%d %H:%M:%S") if student.get('registered_at') else 'N/A',
+                'exam_completed': result is not None,
+                'score': result.get('score') if result else None,
+                'total': result.get('total') if result else None,
+                'percentage': result.get('percentage') if result else None
+            }
+            formatted_students.append(formatted_student)
+        
+        return jsonify(formatted_students)
+    
+    except Exception as e:
+        print(f"❌ Get students error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# ✅ DELETE STUDENT (ADMIN)
+@app.route('/api/admin/delete_student/<student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    collections = get_collections()
+    
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+    
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
+    
+    try:
+        # Delete user
+        collections['users'].delete_one({"_id": ObjectId(student_id)})
+        # Delete their exams
+        collections['exams'].delete_many({"student_id": ObjectId(student_id)})
+        # Delete their results
+        collections['results'].delete_many({"student_id": ObjectId(student_id)})
+        
+        return jsonify({"message": "Student deleted successfully"})
+    
+    except Exception as e:
+        print(f"❌ Delete student error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# ✅ RESET STUDENT EXAM (ADMIN)
+@app.route('/api/admin/reset_exam/<student_id>', methods=['POST'])
+def reset_student_exam(student_id):
+    collections = get_collections()
+    
+    if not session.get('logged_in') or session.get('role') != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+    
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
+    
+    try:
+        # Delete their exams
+        collections['exams'].delete_many({"student_id": ObjectId(student_id)})
+        # Delete their results
+        collections['results'].delete_many({"student_id": ObjectId(student_id)})
+        
+        return jsonify({"message": "Student exam reset successfully"})
+    
+    except Exception as e:
+        print(f"❌ Reset exam error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ✅ LOGOUT
 @app.route('/api/logout', methods=['POST'])
 def logout():
-    roll = session.get('roll_number', 'Unknown')
+    roll = session.get('roll_number', session.get('name', 'Unknown'))
     session.clear()
     print(f"👋 Logout: {roll}")
     return jsonify({"message": "Logged out successfully"})
@@ -668,11 +910,15 @@ def init_database():
     if not collections:
         return jsonify({"error": "Database not available"}), 500
     
+    # Optional: Require admin for this
+    # if not session.get('logged_in') or session.get('role') != 'admin':
+    #     return jsonify({"error": "Admin access required"}), 403
+    
     try:
         # Clear existing questions
         collections['questions'].delete_many({})
         
-        # Insert all 200 questions
+        # Insert all questions
         total_inserted = 0
         for category, questions in QUESTIONS_DATA.items():
             for q_data in questions:
@@ -702,10 +948,73 @@ def init_database():
     
     except Exception as e:
         print(f"❌ Init DB error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+# ✅ GET QUESTION STATS
+@app.route('/api/question_stats')
+def get_question_stats():
+    collections = get_collections()
+    if not collections:
+        return jsonify({"error": "Database not available"}), 500
+    
+    try:
+        stats = {}
+        total = 0
+        for category in ['python', 'web_design', 'iot', 'fundamentals']:
+            count = collections['questions'].count_documents({"category": category})
+            stats[category] = count
+            total += count
+        
+        stats['total'] = total
+        return jsonify(stats)
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ✅ HEALTH CHECK
+@app.route('/api/health')
+def health_check():
+    db_status = "connected" if get_collections() else "disconnected"
+    return jsonify({
+        "status": "ok",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
+    })
+
+# =================== ERROR HANDLERS ===================
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Endpoint not found"}), 404
+    return render_template('index.html'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    print(f"❌ Server error: {str(e)}")
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Internal server error"}), 500
+    return render_template('index.html'), 500
+
+# =================== MAIN ===================
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    
     print(f"🚀 Starting Flask app on port {port}")
-    print(f"🔑 Secret key: {app.secret_key[:16]}...")
-    app.run(debug=True, host='0.0.0.0', port=port)
+    print(f"🔑 Secret key: {app.config['SECRET_KEY'][:16]}...")
+    print(f"📦 Session type: {app.config['SESSION_TYPE']}")
+    print(f"🐛 Debug mode: {debug}")
+    
+    # Initialize database on startup
+    collections = get_collections()
+    if collections:
+        question_count = collections['questions'].count_documents({})
+        print(f"📚 Questions in database: {question_count}")
+        if question_count == 0:
+            print("⚠️ No questions found. Initialize database by calling POST /api/init_db")
+    
+    app.run(debug=debug, host='0.0.0.0', port=port)
