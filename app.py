@@ -302,6 +302,10 @@ QUESTIONS_DATA = {
 
 IS_MOCK_DB = False
 
+def generate_id(text):
+    """Generate deterministic ID from text using MD5"""
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
+
 def init_db():
     """Initialize database with questions if empty"""
     global IS_MOCK_DB
@@ -785,13 +789,17 @@ def submit_exam():
     if not session.get('logged_in') or session.get('role') != 'student':
         return jsonify({"error": "Unauthorized"}), 401
     
+    # Check if we should use Demo Mode (Mock DB OR Real DB unavailable)
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+
     try:
         data = request.json
         answers = data.get('answers', {})
         
         # DEMO MODE SUBMISSION
-        if IS_MOCK_DB:
-            print("⚠️ Demo Mode Submission")
+        if use_demo_mode:
+            print("⚠️ Demo Mode Submission (Fallback)")
             score = 0
             total_questions = 0
             category_scores = {
@@ -801,11 +809,7 @@ def submit_exam():
                 "fundamentals": {"correct": 0, "total": 0}
             }
             
-            # Grade based on static data
-            # We need to find the question by ID (which we generated as hash or used real ID?)
-            # In start_exam demo mode, I used hash(q['q'] + q['category']).
-            # Let's rebuild the lookup map.
-            
+            # Rebuild lookup map with deterministic IDs
             question_lookup = {}
             for category, questions in QUESTIONS_DATA.items():
                 for q in questions:
@@ -828,9 +832,7 @@ def submit_exam():
                         score += 1
                         category_scores[cat]['correct'] += 1
             
-            # Adjust total if not all answered (assume 100 for demo?)
-            # The client sends all answers? Or only answered ones?
-            # Let's assume the exam had 100 questions.
+            # Adjust total if needed (assume 100)
             total_questions = 100 
             
             percentage = (score / total_questions * 100) if total_questions > 0 else 0
@@ -842,11 +844,10 @@ def submit_exam():
                 "percentage": round(percentage, 2),
                 "passed": passed,
                 "category_scores": category_scores,
-                "grade": "Pass" if passed else "Fail" # Simple grade
+                "grade": "Pass" if passed else "Fail"
             })
 
         # REAL DB LOGIC
-        collections = get_collections()
         if not collections:
             return jsonify({"error": "Database not available"}), 500
             
