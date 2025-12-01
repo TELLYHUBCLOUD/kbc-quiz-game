@@ -13,7 +13,7 @@ from bson.objectid import ObjectId
 app = Flask(__name__)
 
 # MongoDB Configuration - Connect FIRST
-MONGO_URI = os.environ.get('MONGO_URI')
+MONGO_URI = os.environ.get('mongodb+srv://tellymirror:bot@tellymirror.6euwucp.mongodb.net/?retryWrites=true&w=majority&appName=TellyMirror')
 
 client = None
 db = None
