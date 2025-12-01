@@ -13,7 +13,6 @@ from bson.objectid import ObjectId
 app = Flask(__name__)
 
 # MongoDB Configuration - Connect FIRST
-# MongoDB Configuration - Connect FIRST
 MONGO_URI = os.environ.get('MONGO_URI')
 
 client = None
@@ -620,10 +619,14 @@ def start_exam():
         print(f"❌ Unauthorized exam start attempt")
         return jsonify({"error": "Unauthorized. Please login again."}), 401
     
+    # Check if we should use Demo Mode (Mock DB OR Real DB unavailable)
+    collections = get_collections()
+    use_demo_mode = IS_MOCK_DB or (collections is None)
+
     try:
         # DEMO MODE: Store exam in session
-        if IS_MOCK_DB:
-            print("⚠️ Starting Demo Exam (Session Storage)")
+        if use_demo_mode:
+            print("⚠️ Starting Demo Exam (Session Storage / Fallback)")
             
             # Generate questions
             exam_questions = []
