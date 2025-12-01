@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import secrets
 import os
 import random
+import tempfile
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -41,7 +42,8 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)
 app.config['SESSION_COOKIE_SECURE'] = False  # Set True for HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+# Use temp directory for sessions to avoid read-only file system errors
+app.config['SESSION_FILE_DIR'] = os.path.join(tempfile.gettempdir(), 'flask_session')
 app.config['SESSION_USE_SIGNER'] = True
 
 # Create session directory if it doesn't exist
