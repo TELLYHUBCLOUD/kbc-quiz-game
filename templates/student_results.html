@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -269,20 +270,46 @@
         }
 
         @media (max-width: 768px) {
-            .result-title { font-size: 24px; }
-            .grade-letter { font-size: 60px; }
-            .grade-percentage { font-size: 24px; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .card { padding: 20px; }
+            .result-title {
+                font-size: 24px;
+            }
+
+            .grade-letter {
+                font-size: 60px;
+            }
+
+            .grade-percentage {
+                font-size: 24px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
         }
 
         @media print {
-            .navbar, .action-buttons, .back-btn { display: none; }
-            body { background: white; }
-            .card { box-shadow: none; }
+
+            .navbar,
+            .action-buttons,
+            .back-btn {
+                display: none;
+            }
+
+            body {
+                background: white;
+            }
+
+            .card {
+                box-shadow: none;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="navbar">
         <h1>📊 My Results</h1>
@@ -298,7 +325,8 @@
             <div class="card">
                 <div class="result-header">
                     <div class="trophy" id="trophyIcon">🏆</div>
-                    <h1 class="result-title">Your Exam Results</h1>
+                    <h1 class="result-title">O Level Exam Marksheet</h1>
+                    <p style="color: #666; font-size: 16px;">Computer Fundamentals & Applications</p>
                 </div>
 
                 <div class="student-info">
@@ -342,7 +370,7 @@
 
                 <div class="category-performance">
                     <h3>📊 Category-wise Performance</h3>
-                    
+
                     <div class="category-item">
                         <div class="category-header">
                             <span class="category-name">🐍 Python Programming</span>
@@ -379,7 +407,8 @@
                             <span class="category-score" id="fundamentalsScore">0/25</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill progress-fundamentals" id="fundamentalsProgress" style="width: 0%"></div>
+                            <div class="progress-fill progress-fundamentals" id="fundamentalsProgress"
+                                style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -407,8 +436,8 @@
     <script>
         async function loadResults() {
             try {
-                const response = await fetch('/api/my_results');
-                
+                const response = await fetch('/api/student/result');
+
                 if (!response.ok) {
                     document.getElementById('loadingResults').style.display = 'none';
                     document.getElementById('noResults').style.display = 'block';
@@ -453,15 +482,15 @@
                 document.getElementById('trophyIcon').textContent = trophies[data.grade] || '🏆';
 
                 // Update stats
-                document.getElementById('totalQuestions').textContent = data.total_questions;
-                document.getElementById('correctAnswers').textContent = data.correct_answers;
-                document.getElementById('wrongAnswers').textContent = data.incorrect_answers;
+                document.getElementById('totalQuestions').textContent = data.total;
+                document.getElementById('correctAnswers').textContent = data.score;
+                document.getElementById('wrongAnswers').textContent = data.total - data.score;
 
                 // Update category performance
-                updateCategoryPerformance('python', data.category_stats.python);
-                updateCategoryPerformance('web_design', data.category_stats.web_design);
-                updateCategoryPerformance('iot', data.category_stats.iot);
-                updateCategoryPerformance('fundamentals', data.category_stats.fundamentals);
+                updateCategoryPerformance('python', data.category_scores.python);
+                updateCategoryPerformance('web_design', data.category_scores.web_design);
+                updateCategoryPerformance('iot', data.category_scores.iot);
+                updateCategoryPerformance('fundamentals', data.category_scores.fundamentals);
 
             } catch (error) {
                 console.error('Error loading results:', error);
@@ -482,7 +511,7 @@
             const percentage = (stats.correct / stats.total) * 100;
 
             document.getElementById(ids.scoreId).textContent = `${stats.correct}/${stats.total}`;
-            
+
             setTimeout(() => {
                 document.getElementById(ids.progressId).style.width = percentage + '%';
             }, 300);
@@ -492,4 +521,5 @@
         window.onload = loadResults;
     </script>
 </body>
+
 </html>
